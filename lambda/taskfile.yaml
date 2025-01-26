@@ -1,0 +1,31 @@
+version: "3"
+
+includes:
+  sessiontest:
+    taskfile: session-test/taskfile.yaml
+    dir: session-test/
+
+tasks:
+  prod:build:
+    cmds:
+      - |
+        for lambda_func in serveclient listdrawings getdrawing putdrawing;
+        do
+          cd $lambda_func
+          GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o bootstrap main.go
+          [ -f "$lambda_func.zip" ] && zip -u "$lambda_func.zip" ./bootstrap || zip "$lambda_func.zip" ./bootstrap
+          cd -
+        done
+  prod:deploy:
+    cmds:
+      - task: prod:build
+      - |
+        cd ../tf/aws-lambda/prod
+        terraform init
+        terraform apply -var s3_bucket={{.DRAWINGS_BUCKET_NAME}}
+  prod:undeploy:
+    cmds:
+      - |
+        cd ../tf/aws-lambda/prod
+        terraform init
+        terraform destroy -var s3_bucket={{.DRAWINGS_BUCKET_NAME}}

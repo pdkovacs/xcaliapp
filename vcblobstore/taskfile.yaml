@@ -1,0 +1,14 @@
+version: '3'
+
+vars:
+  suite: '{{ .suite | default "TestGitRepositoryTestSuite" }}'
+  case:  '{{ .case | default "TestAcceptsNewBlobWhenEmpty" }}'
+
+tasks:
+  test:
+    cmds:
+      - go test -parallel 1 -timeout 10s ./...
+  test-single: # a sample test-case is used, replace it with whichever other test cases you need to run
+    cmds:
+      - go test -parallel 1 -v -timeout 10s ./test/... -run '^{{.suite}}$$' -testify.m {{.case}}
+

@@ -1,0 +1,56 @@
+version: "3"
+
+vars:
+  WORKSPACE_DIR: "${HOME}/workspace/xcaliapp"
+  GO_MODULES:
+    sh: dir -1 ../ | while read d; do test -f ../$d/go.mod && echo $d; done
+  GIT_REPOS:
+    sh: dir -1 ../ | while read d; do test -d ../$d/.git && echo $d; done
+
+  DRAWINGS_BUCKET_NAME: '{{ .DRAWINGS_BUCKET_NAME | default "test-xcalidrawings" }}'
+
+includes:
+  server:
+    taskfile: ../server/taskfile.yaml
+    dir: ../server
+  webclient:
+    taskfile: ../webclient/taskfile.yaml
+    dir: ../webclient
+  aws-lambda:
+    taskfile: ../lambda/taskfile.yaml
+    dir: ../lambda
+
+tasks:
+  setup:
+    cmds:
+      - |
+        mkdir "{{.WORKSPACE_DIR}}"
+        cd "{{.WORKSPACE_DIR}}"
+        go work init
+        cd -
+        echo '{{.GIT_REPOS}}' | while read mod; do
+          cd "{{.WORKSPACE_DIR}}"
+            git clone git@github.com:xcaliapp/$mod.git
+            test -f $mod/go.mod && go work use $mod
+          cd -
+        done
+        cd "{{.WORKSPACE_DIR}}"
+
+        # dependencies from outside the github org:
+        git clone git@github.com:pdkovacs/vcblobstore.git
+        go work use vcblobstore 
+  git-all:
+    cmds:
+      - |
+        cd "{{.WORKSPACE_DIR}}/main"
+        while read mod; do
+        echo "mod: $mod"
+          cd ../$mod
+          lazygit
+          cd -
+        done < <(echo '{{.GIT_REPOS}}')
+  debug:
+    cmds:
+      - |
+        echo "Top: DRAWINGS_BUCKET_NAME="{{.DRAWINGS_BUCKET_NAME}}
+
