@@ -8,6 +8,8 @@ import { useAppDispatch, useAppSelector } from "./app/hooks";
 import { selectSavedDrawing, selectDrawingToEditStatus, selectCurrentDrawingContent, drawingContentChanged } from "./features/drawing/drawingSlice";
 import { SaveDrawingDialog } from "./features/drawing/SaveDrawing";
 
+import "./App.css";
+
 const App = () => {
 
   const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null);
@@ -40,6 +42,8 @@ const App = () => {
     };
 
     excalidrawAPI?.updateScene(sceneData);
+
+    document.title = savedDrawing.title;
   }, [savedDrawing]);
 
   const contentHasChanged = useMemo(() => {
@@ -49,22 +53,26 @@ const App = () => {
   console.log(">>>>>>>> contentHasChanged", contentHasChanged);
 
   return (
-    <div className="App">
-      {currentDrawingStatus === "loading" && <LinearProgress sx={{ marginTop: "-4px" }} />}
-      <div style={{ height: "100vh" }}>
-        <Excalidraw excalidrawAPI={api => setExcalidrawAPI(api)}>
-          <MainMenu>
-            <MainMenu.Item onSelect={() => setOpenDrawingDialogOpen(true)}>
-              Open
-            </MainMenu.Item>
-            <MainMenu.Item disabled={!contentHasChanged} onSelect={() => setSaveDrawingDialogOpen(true)}>
-              Save
-            </MainMenu.Item>
-          </MainMenu>
-        </Excalidraw>
+    <div>
+      <div className="document-title">{savedDrawing.title}</div>
+      <div>
+        {currentDrawingStatus === "loading" && <LinearProgress sx={{ marginTop: "-4px" }} />
+        }
+        <div className="xcali-area">
+          <Excalidraw excalidrawAPI={api => setExcalidrawAPI(api)}>
+            <MainMenu>
+              <MainMenu.Item onSelect={() => setOpenDrawingDialogOpen(true)}>
+                Open
+              </MainMenu.Item>
+              <MainMenu.Item disabled={!contentHasChanged} onSelect={() => setSaveDrawingDialogOpen(true)}>
+                Save
+              </MainMenu.Item>
+            </MainMenu>
+          </Excalidraw>
+        </div>
+        <OpenDrawingDialog open={openDrawingDialogOpen} onClose={() => setOpenDrawingDialogOpen(false)} />
+        <SaveDrawingDialog open={saveDrawingDialogOpen} onClose={() => setSaveDrawingDialogOpen(false)} />
       </div>
-      <OpenDrawingDialog open={openDrawingDialogOpen} onClose={() => setOpenDrawingDialogOpen(false)} />
-      <SaveDrawingDialog open={saveDrawingDialogOpen} onClose={() => setSaveDrawingDialogOpen(false)} />
     </div>
   );
 };

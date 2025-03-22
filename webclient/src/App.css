@@ -1,0 +1,7 @@
+.xcali-area {
+    height: calc(100vh - 24px);
+}
+
+.document-title {
+    padding: 5px 0 0 5px;
+}
