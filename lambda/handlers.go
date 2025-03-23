@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"s3store"
 	"strings"
@@ -11,8 +12,8 @@ import (
 
 type eventHandlerFn func(parsedEvent map[string]any) (lambdaResponse, error)
 
-func HandleSeveClientRequest(ctx context.Context, event json.RawMessage) (LambdaResponseToAPIGW, error) {
-	var response LambdaResponseToAPIGW
+func handleServeClientRequest(ctx context.Context, event json.RawMessage) (lambdaResponse, error) {
+	var response lambdaResponse
 	var parsedEvent map[string]interface{}
 
 	if eventParseErr := json.Unmarshal(event, &parsedEvent); eventParseErr != nil {
@@ -34,8 +35,8 @@ func HandleSeveClientRequest(ctx context.Context, event json.RawMessage) (Lambda
 	}
 	content, readErr := sessionStore.ServeClientCode(ctx, path)
 	if readErr == s3store.ErrNotfound {
-		return LambdaResponseToAPIGW{
-			StatusCode: 404,
+		return lambdaResponse{
+			statusCode: http.StatusNotFound,
 		}, nil
 	}
 	if readErr != nil {
@@ -60,79 +61,109 @@ func HandleSeveClientRequest(ctx context.Context, event json.RawMessage) (Lambda
 
 	fmt.Printf("serving client code content as %s\n", contentType)
 
-	return LambdaResponseToAPIGW{
-		StatusCode: 200,
-		Headers: map[string]string{
+	return lambdaResponse{
+		headers: map[string]string{
 			"Content-Type": contentType,
 		},
-		Body: content,
+		body: content,
 	}, nil
 }
 
-func HandleListDrawingsRequest(ctx context.Context, event json.RawMessage) (LambdaResponseToAPIGW, error) {
-	return handle(ctx, event, func(parsedEvent map[string]any) (lambdaResponse, error) {
-		titles, listErr := drawingStore.ListDrawingTitles(ctx)
-		if listErr != nil {
-			fmt.Printf("failed to list drawing titles: %#v\n", listErr)
-			return lambdaResponse{}, listErr
-		}
-		return lambdaResponse{
-			headers: nil,
-			body:    titles,
-		}, nil
-	})
+func handleListDrawingsRequest(ctx context.Context, parsedEvent map[string]any) (lambdaResponse, error) {
+	titles, listErr := drawingStore.ListDrawingTitles(ctx)
+	if listErr != nil {
+		fmt.Printf("failed to list drawing titles: %#v\n", listErr)
+		return lambdaResponse{}, listErr
+	}
+	return lambdaResponse{
+		headers: nil,
+		body:    titles,
+	}, nil
 }
 
-func HandleGetDrawingRequest(ctx context.Context, event json.RawMessage) (LambdaResponseToAPIGW, error) {
-	return handle(ctx, event, func(parsedEvent map[string]any) (lambdaResponse, error) {
-		title, titleErr := extractTitlePathParam(parsedEvent)
+func handleGetDrawingRequest(ctx context.Context, title string) (lambdaResponse, error) {
+	content, getContentErr := drawingStore.GetDrawing(ctx, title)
+	if getContentErr != nil {
+		fmt.Printf("failed to get drawing content for %s: %#v", title, getContentErr)
+		return lambdaResponse{}, getContentErr
+	}
+
+	var contentJson any
+	if jsonErr := json.Unmarshal([]byte(content), &contentJson); jsonErr != nil {
+		fmt.Printf("failed to unmarshal drawing content for %s into JSON: %#v", title, jsonErr)
+		return lambdaResponse{}, jsonErr
+	}
+
+	fmt.Printf("content of length %d found for %s", len(content), title)
+	return lambdaResponse{
+		headers: map[string]string{
+			"Content-Type": "application/json",
+		},
+		body: contentJson,
+	}, nil
+}
+
+func handlePutDrawingRequest(ctx context.Context, parsedEvent map[string]any) (lambdaResponse, error) {
+	title, titleErr := extractTitleQueryParam(parsedEvent)
+	if titleErr != nil {
+		return lambdaResponse{}, titleErr
+	}
+	body := parsedEvent["body"]
+	content, bodyIsString := body.(string)
+	if !bodyIsString {
+		msg := "body for %s isn't string: %#v"
+		fmt.Printf(msg+"\n", title, body)
+		return lambdaResponse{}, fmt.Errorf(msg, title, body)
+	}
+	fmt.Printf("received content for %s of length  %d: ", title, len(content))
+	contentReader := strings.NewReader(content)
+	putDrawingErr := drawingStore.PutDrawing(ctx, title, contentReader, "") // TODO: modifiedBy
+	if putDrawingErr != nil {
+		fmt.Printf("failed to store drawing %s: %v", title, putDrawingErr)
+		return lambdaResponse{}, fmt.Errorf("failed to store drawing %s: %v", title, putDrawingErr)
+	}
+	return lambdaResponse{}, nil
+}
+
+func handleDrawingRequest(ctx context.Context, parsedEvent map[string]any) (lambdaResponse, error) {
+	httpMethodUntyped := parsedEvent["httpMethod"]
+	httpMethod, httpMethodTypeIsString := httpMethodUntyped.(string)
+	if !httpMethodTypeIsString {
+		return lambdaResponse{}, fmt.Errorf("httpMethod value is not string: %#v", httpMethodUntyped)
+	}
+
+	if httpMethod == "GET" {
+		title, titleErr := extractTitleQueryParam(parsedEvent)
 		if titleErr != nil {
 			return lambdaResponse{}, titleErr
 		}
-
-		content, getContentErr := drawingStore.GetDrawing(ctx, title)
-		if getContentErr != nil {
-			fmt.Printf("failed to get drawing content for %s: %#v", title, getContentErr)
-			return lambdaResponse{}, getContentErr
+		if len(title) == 0 {
+			return handleListDrawingsRequest(ctx, parsedEvent)
+		} else {
+			return handleGetDrawingRequest(ctx, title)
 		}
+	}
 
-		var contentJson any
-		if jsonErr := json.Unmarshal([]byte(content), &contentJson); jsonErr != nil {
-			fmt.Printf("failed to unmarshal drawing content for %s into JSON: %#v", title, jsonErr)
-			return lambdaResponse{}, jsonErr
-		}
+	if httpMethod == "PUT" {
+		return handlePutDrawingRequest(ctx, parsedEvent)
+	}
 
-		fmt.Printf("content of length %d found for %s", len(content), title)
-		return lambdaResponse{
-			headers: map[string]string{
-				"Content-Type": "application/json",
-			},
-			body: contentJson,
-		}, nil
-	})
+	return lambdaResponse{}, fmt.Errorf("unexpected httpMethod: %s", httpMethod)
 }
 
-func HandlePutDrawingRequest(ctx context.Context, event json.RawMessage) (LambdaResponseToAPIGW, error) {
+func HandleRequest(ctx context.Context, event json.RawMessage) (LambdaResponseToAPIGW, error) {
 	return handle(ctx, event, func(parsedEvent map[string]any) (lambdaResponse, error) {
-		title, titleErr := extractTitlePathParam(parsedEvent)
-		if titleErr != nil {
-			return lambdaResponse{}, titleErr
+		pathUntyped := parsedEvent["path"]
+		path, pathIsString := pathUntyped.(string)
+		if !pathIsString {
+			return lambdaResponse{}, fmt.Errorf("path property value is string: %#v", pathUntyped)
 		}
-		body := parsedEvent["body"]
-		content, bodyIsString := body.(string)
-		if !bodyIsString {
-			msg := "body for %s isn't string: %#v"
-			fmt.Printf(msg+"\n", title, body)
-			return lambdaResponse{}, fmt.Errorf(msg, title, body)
+
+		if path == "/api/drawing" {
+			return handleDrawingRequest(ctx, parsedEvent)
 		}
-		fmt.Printf("received content for %s of length  %d: ", title, len(content))
-		contentReader := strings.NewReader(content)
-		putDrawingErr := drawingStore.PutDrawing(ctx, title, contentReader, "") // TODO: modifiedBy
-		if putDrawingErr != nil {
-			fmt.Printf("failed to store drawing %s: %v", title, putDrawingErr)
-			return lambdaResponse{}, fmt.Errorf("failed to store drawing %s: %v", title, putDrawingErr)
-		}
-		return lambdaResponse{}, nil
+
+		return handleServeClientRequest(ctx, event)
 	})
 }
 
@@ -175,18 +206,29 @@ func handle(ctx context.Context, event json.RawMessage, eventHandler eventHandle
 	return *payloadResponse, nil
 }
 
-func extractTitlePathParam(parsedEvent map[string]any) (string, error) {
-	rawPathParameters := parsedEvent["pathParameters"]
+func extractTitleQueryParam(parsedEvent map[string]any) (string, error) {
+	rawQueryParameters := parsedEvent["queryStringParameters"]
 
-	typedPathParams, rawPathParametersTypeOK := rawPathParameters.(map[string]any)
-	if !rawPathParametersTypeOK {
-		errMsg := "'pathParameters' event property is not of type map[string]string"
+	if rawQueryParameters == nil {
+		return "", nil
+	}
+
+	typedQeryParams, rawQueryParametersTypeOK := rawQueryParameters.(map[string]any)
+	if !rawQueryParametersTypeOK {
+		errMsg := "'queryStringParameters' event property is not of type map[string]string"
 		fmt.Print(errMsg)
 		return "", fmt.Errorf("%s", errMsg)
 	}
-	title, titleIsString := typedPathParams["title"].(string)
+
+	untypedTitleParam := typedQeryParams["title"]
+
+	if untypedTitleParam == nil {
+		return "", nil
+	}
+
+	title, titleIsString := untypedTitleParam.(string)
 	if !titleIsString {
-		errMsg := "'title' path-parameter is not string"
+		errMsg := "'title' query-parameter is not string"
 		fmt.Print(errMsg)
 		return "", fmt.Errorf("%s", errMsg)
 	}

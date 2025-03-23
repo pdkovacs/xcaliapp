@@ -17,61 +17,25 @@ resource "aws_apigatewayv2_integration" "serveclient" {
   connection_type      = "INTERNET"
   description          = "prod-lambda"
   integration_method   = "POST"
-  integration_uri      = aws_lambda_function.xcali-prod[index(local.function_names, "serveclient")].invoke_arn
+  integration_uri      = aws_lambda_function.xcali_prod.invoke_arn
   passthrough_behavior = "WHEN_NO_MATCH"
 }
 
-resource "aws_apigatewayv2_route" "listdrawings" {
+resource "aws_apigatewayv2_route" "drawings" {
   api_id    = aws_apigatewayv2_api.xcaliapp_prod.id
-  route_key = "GET /api/drawing"
+  route_key = "ANY /api/drawing"
 
-  target = "integrations/${aws_apigatewayv2_integration.listdrawings.id}"
+  target = "integrations/${aws_apigatewayv2_integration.drawings.id}"
 }
 
-resource "aws_apigatewayv2_integration" "listdrawings" {
+resource "aws_apigatewayv2_integration" "drawings" {
   api_id           = aws_apigatewayv2_api.xcaliapp_prod.id
   integration_type = "AWS_PROXY"
 
   connection_type      = "INTERNET"
   description          = "prod-lambda"
   integration_method   = "POST"
-  integration_uri      = aws_lambda_function.xcali-prod[index(local.function_names, "listdrawings")].invoke_arn
-  passthrough_behavior = "WHEN_NO_MATCH"
-}
-
-resource "aws_apigatewayv2_route" "getdrawing" {
-  api_id    = aws_apigatewayv2_api.xcaliapp_prod.id
-  route_key = "GET /api/drawing/{title}"
-
-  target = "integrations/${aws_apigatewayv2_integration.getdrawing.id}"
-}
-
-resource "aws_apigatewayv2_integration" "getdrawing" {
-  api_id           = aws_apigatewayv2_api.xcaliapp_prod.id
-  integration_type = "AWS_PROXY"
-
-  connection_type      = "INTERNET"
-  description          = "prod-lambda"
-  integration_method   = "POST"
-  integration_uri      = aws_lambda_function.xcali-prod[index(local.function_names, "getdrawing")].invoke_arn
-  passthrough_behavior = "WHEN_NO_MATCH"
-}
-
-resource "aws_apigatewayv2_route" "putdrawing" {
-  api_id    = aws_apigatewayv2_api.xcaliapp_prod.id
-  route_key = "PUT /api/drawing/{title}"
-
-  target = "integrations/${aws_apigatewayv2_integration.putdrawing.id}"
-}
-
-resource "aws_apigatewayv2_integration" "putdrawing" {
-  api_id           = aws_apigatewayv2_api.xcaliapp_prod.id
-  integration_type = "AWS_PROXY"
-
-  connection_type      = "INTERNET"
-  description          = "prod-lambda"
-  integration_method   = "POST"
-  integration_uri      = aws_lambda_function.xcali-prod[index(local.function_names, "putdrawing")].invoke_arn
+  integration_uri      = aws_lambda_function.xcali_prod.invoke_arn
   passthrough_behavior = "WHEN_NO_MATCH"
 }
 

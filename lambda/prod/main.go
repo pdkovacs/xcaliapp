@@ -7,5 +7,5 @@ import (
 )
 
 func main() {
-	lambda.Start(awslambda.HandleGetDrawingRequest)
+	lambda.Start(awslambda.HandleRequest)
 }

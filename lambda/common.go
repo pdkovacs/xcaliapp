@@ -12,8 +12,9 @@ import (
 )
 
 type lambdaResponse struct {
-	headers map[string]string
-	body    any
+	statusCode int
+	headers    map[string]string
+	body       any
 }
 
 type LambdaResponseToAPIGW struct {
@@ -73,8 +74,13 @@ func createApiGwResponse(challange bool, session string, lambdaResult lambdaResp
 		mergedHeaders[k] = v
 	}
 
+	status := http.StatusOK
+	if lambdaResult.statusCode > 0 {
+		status = lambdaResult.statusCode
+	}
+
 	respStruct = &LambdaResponseToAPIGW{
-		StatusCode:        200,
+		StatusCode:        status,
 		Headers:           mergedHeaders,
 		IsBase64Encoded:   false,
 		MultiValueHeaders: nil,
@@ -123,9 +129,9 @@ var (
 // parseEventCheckCreateSession parses the event and, after checking the "Cookie" and "authentication" header for credentials returns as the map-typed first parameter.
 // The second return value is the session value the browser needs to set, the third parameter is an error response (most with a WWW-Authenticate challange) if any
 // the last parameter is an internal processing error if any.
-func parseEventCheckCreateSession(sessMan SessionManager, ctx context.Context, event json.RawMessage) (map[string]interface{}, string, *LambdaResponseToAPIGW, error) {
+func parseEventCheckCreateSession(sessMan SessionManager, ctx context.Context, event json.RawMessage) (map[string]any, string, *LambdaResponseToAPIGW, error) {
 	var response *LambdaResponseToAPIGW
-	var parsedEvent map[string]interface{}
+	var parsedEvent map[string]any
 
 	if eventParseErr := json.Unmarshal(event, &parsedEvent); eventParseErr != nil {
 		fmt.Printf("Failed to unmarshal event: %v", eventParseErr)
@@ -133,10 +139,13 @@ func parseEventCheckCreateSession(sessMan SessionManager, ctx context.Context, e
 	}
 
 	fmt.Printf("parsedEvent: %#v\n", parsedEvent)
+	fmt.Printf("path: %#v\n", parsedEvent["path"])
+	fmt.Printf("httpMethod: %#v\n", parsedEvent["httpMethod"])
 	fmt.Printf("cookies: %#v\n", parsedEvent["cookies"])
 	fmt.Printf("headers: %#v\n", parsedEvent["headers"])
 	fmt.Printf("multiValueHeaders: %#v\n", parsedEvent["multiValueHeaders"])
 	fmt.Printf("pathParameters: %#v\n", parsedEvent["pathParameters"])
+	fmt.Printf("queryStringParameters: %#v\n", parsedEvent["queryStringParameters"])
 
 	headers, headersCastOk := parsedEvent["headers"].(map[string]any)
 	if !headersCastOk {

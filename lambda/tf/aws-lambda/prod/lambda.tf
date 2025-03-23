@@ -1,7 +1,7 @@
 locals {
-  function_names    = ["listdrawings", "getdrawing", "putdrawing", "serveclient"]
-  archive_filenames = [for f in local.function_names : "${f}.zip"]
-  impl_directories  = [for f in local.function_names : "${path.module}/../../../aws-lambda/${f}"]
+  function_name    = "xcalidrawing"
+  archive_filename = "${local.function_name}.zip"
+  impl_directory   = "${path.module}/../aws-lambda"
 }
 
 data "aws_s3_bucket" "store" {
@@ -68,10 +68,9 @@ resource "aws_iam_role_policy_attachment" "read_write_s3_bucket" {
 }
 
 resource "aws_lambda_permission" "apigw" {
-  count         = length(local.function_names)
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.xcali-prod[count.index].function_name
+  function_name = local.function_name
   principal     = "apigateway.amazonaws.com"
 
   # The /*/* portion grants access from any method on any resource
@@ -80,21 +79,19 @@ resource "aws_lambda_permission" "apigw" {
 }
 
 data "archive_file" "lambda" {
-  count       = length(local.function_names)
   type        = "zip"
-  source_file = "${local.impl_directories[count.index]}/bootstrap"
-  output_path = "${local.impl_directories[count.index]}/${local.archive_filenames[count.index]}"
+  source_file = "${local.impl_directory}/bootstrap"
+  output_path = "${local.impl_directory}/${local.archive_filename}"
 }
 
-resource "aws_lambda_function" "xcali-prod" {
-  count         = length(local.function_names)
-  function_name = "xcaliapp-${local.function_names[count.index]}"
+resource "aws_lambda_function" "xcali_prod" {
+  function_name = local.function_name
   architectures = ["arm64"]
-  filename      = "${local.impl_directories[count.index]}/${local.archive_filenames[count.index]}"
+  filename      = "${local.impl_directory}/${local.archive_filename}"
   role          = aws_iam_role.iam_for_lambda.arn
   handler       = "index.handler"
 
-  source_code_hash = data.archive_file.lambda[count.index].output_base64sha256
+  source_code_hash = data.archive_file.lambda.output_base64sha256
 
   runtime = "provided.al2023"
 
@@ -106,13 +103,12 @@ resource "aws_lambda_function" "xcali-prod" {
 
   depends_on = [
     aws_iam_role_policy_attachment.lambda_logs,
-    # aws_cloudwatch_log_group.xcali-prod[count.index]
+    # aws_cloudwatch_log_group.xcali_prod
   ]
 }
 
-resource "aws_cloudwatch_log_group" "xcali-prod" {
-  count             = length(local.function_names)
-  name              = "/aws/lambda/xcaliapp-${local.function_names[count.index]}"
+resource "aws_cloudwatch_log_group" "xcali_prod" {
+  name              = "/aws/lambda/xcaliapp-${local.function_name}"
   retention_in_days = 14
 }
 
