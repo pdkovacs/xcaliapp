@@ -3,10 +3,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { LinearProgress } from "@mui/material";
 import { Excalidraw, MainMenu } from "@excalidraw/excalidraw";
 import { OpenDrawingDialog } from "./features/drawing/OpenDrawing";
-import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types/types";
+import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { useAppDispatch, useAppSelector } from "./app/hooks";
 import { selectSavedDrawing, selectDrawingToEditStatus, selectCurrentDrawingContent, drawingContentChanged } from "./features/drawing/drawingSlice";
 import { SaveDrawingDialog } from "./features/drawing/SaveDrawing";
+
+import "@excalidraw/excalidraw/index.css";
 
 import "./App.css";
 
