@@ -2,7 +2,7 @@ import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 
 const devServerHost = "localhost";
-const backendServerPort = 8080;
+const backendServerPort = 8888;
 
 // https://vitejs.dev/config/
 export default defineConfig({
