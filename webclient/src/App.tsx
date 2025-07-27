@@ -2,6 +2,7 @@ import { isEqual } from "lodash";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LinearProgress } from "@mui/material";
 import { Excalidraw, MainMenu } from "@excalidraw/excalidraw";
+import type { NonDeletedExcalidrawElement, Ordered } from "@excalidraw/excalidraw/element/types";
 import { OpenDrawingDialog } from "./features/drawing/OpenDrawing";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { useAppDispatch, useAppSelector } from "./app/hooks";
@@ -11,6 +12,13 @@ import { SaveDrawingDialog } from "./features/drawing/SaveDrawing";
 import "@excalidraw/excalidraw/index.css";
 
 import "./App.css";
+
+export type XcalidrawDocument = Readonly<{
+  type: string;
+  title: string;
+  elements: readonly Ordered<NonDeletedExcalidrawElement>[];
+}>
+
 
 const App = () => {
 
@@ -32,14 +40,20 @@ const App = () => {
         excalidrawAPIUnsubscribe.current();
       }
       excalidrawAPIUnsubscribe.current = excalidrawAPI.onChange(() => {
-        dispatch(drawingContentChanged(JSON.stringify(excalidrawAPI.getSceneElements())));
+        const excalidrawContent = excalidrawAPI.getSceneElements();
+        const doc: XcalidrawDocument = {
+          type: "excalidraw",
+          title: "asdfasdffas asdfasdf",
+          elements: excalidrawContent
+        };
+        dispatch(drawingContentChanged(JSON.stringify(doc)));
       });
     }
   }, [excalidrawAPI, savedDrawing]);
 
   useEffect(() => {
     const sceneData = {
-      elements: savedDrawing.content ? JSON.parse(savedDrawing.content) : [],
+      elements: savedDrawing.content ? JSON.parse(savedDrawing.content).elements : [],
       appState: {}
     };
 
