@@ -1,3 +1,4 @@
+import React from "react";
 import type { RenderOptions } from "@testing-library/react";
 import { render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -13,15 +14,15 @@ import { makeStore } from "../app/store";
  * a custom store instance.
  */
 interface ExtendedRenderOptions extends Omit<RenderOptions, "queries"> {
-  /**
+	/**
    * Defines a specific portion or the entire initial state for the Redux store.
    * This is particularly useful for initializing the state in a
    * controlled manner during testing, allowing components to be rendered
    * with predetermined state conditions.
    */
-  preloadedState?: Partial<RootState>
+	preloadedState?: Partial<RootState>
 
-  /**
+	/**
    * Allows the use of a specific Redux store instance instead of a
    * default or global store. This flexibility is beneficial when
    * testing components with unique store requirements or when isolating
@@ -30,7 +31,7 @@ interface ExtendedRenderOptions extends Omit<RenderOptions, "queries"> {
    *
    * @default makeStore(preloadedState)
    */
-  store?: AppStore
+	store?: AppStore
 }
 
 /**
@@ -42,24 +43,24 @@ interface ExtendedRenderOptions extends Omit<RenderOptions, "queries"> {
  * @returns An object containing the Redux store used in the render, User event API for simulating user interactions in tests, and all of React Testing Library's query functions for testing the component.
  */
 export const renderWithProviders = (
-  ui: ReactElement,
-  extendedRenderOptions: ExtendedRenderOptions = {}
+	ui: ReactElement,
+	extendedRenderOptions: ExtendedRenderOptions = {}
 ) => {
-  const {
-    preloadedState = {},
-    // Automatically create a store instance if no store was passed in
-    store = makeStore(preloadedState),
-    ...renderOptions
-  } = extendedRenderOptions;
+	const {
+		preloadedState = {},
+		// Automatically create a store instance if no store was passed in
+		store = makeStore(preloadedState),
+		...renderOptions
+	} = extendedRenderOptions;
 
-  const Wrapper = ({ children }: PropsWithChildren) => (
-    <Provider store={store}>{children}</Provider>
-  );
+	const Wrapper = ({ children }: PropsWithChildren) => (
+		<Provider store={store}>{children}</Provider>
+	);
 
-  // Return an object with the store and all of RTL's query functions
-  return {
-    store,
-    user: userEvent.setup(),
-    ...render(ui, { wrapper: Wrapper, ...renderOptions })
-  };
+	// Return an object with the store and all of RTL's query functions
+	return {
+		store,
+		user: userEvent.setup(),
+		...render(ui, { wrapper: Wrapper, ...renderOptions })
+	};
 };

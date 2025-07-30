@@ -1,3 +1,4 @@
+import React from "react";
 import { isEqual } from "lodash";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LinearProgress } from "@mui/material";
@@ -14,83 +15,83 @@ import "@excalidraw/excalidraw/index.css";
 import "./App.css";
 
 export type XcalidrawDocument = Readonly<{
-  type: string;
-  title: string;
-  elements: readonly Ordered<NonDeletedExcalidrawElement>[];
-}>
+	type: string;
+	title: string;
+	elements: readonly Ordered<NonDeletedExcalidrawElement>[];
+}>;
 
 
 const App = () => {
 
-  const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null);
-  const excalidrawAPIUnsubscribe = useRef<(() => void) | null>(null);
+	const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null);
+	const excalidrawAPIUnsubscribe = useRef<(() => void) | null>(null);
 
-  const currentDrawingStatus = useAppSelector(selectDrawingToEditStatus);
-  const savedDrawing = useAppSelector(selectSavedDrawing);
-  const currentContent = useAppSelector(selectCurrentDrawingContent);
+	const currentDrawingStatus = useAppSelector(selectDrawingToEditStatus);
+	const savedDrawing = useAppSelector(selectSavedDrawing);
+	const currentContent = useAppSelector(selectCurrentDrawingContent);
 
-  const [openDrawingDialogOpen, setOpenDrawingDialogOpen] = useState(false);
-  const [saveDrawingDialogOpen, setSaveDrawingDialogOpen] = useState(false);
+	const [openDrawingDialogOpen, setOpenDrawingDialogOpen] = useState(false);
+	const [saveDrawingDialogOpen, setSaveDrawingDialogOpen] = useState(false);
 
-  const dispatch = useAppDispatch();
+	const dispatch = useAppDispatch();
 
-  useEffect(() => {
-    if (excalidrawAPI) {
-      if (excalidrawAPIUnsubscribe.current !== null) {
-        excalidrawAPIUnsubscribe.current();
-      }
-      excalidrawAPIUnsubscribe.current = excalidrawAPI.onChange(() => {
-        const excalidrawContent = excalidrawAPI.getSceneElements();
-        const doc: XcalidrawDocument = {
-          type: "excalidraw",
-          title: "asdfasdffas asdfasdf",
-          elements: excalidrawContent
-        };
-        dispatch(drawingContentChanged(JSON.stringify(doc)));
-      });
-    }
-  }, [excalidrawAPI, savedDrawing]);
+	useEffect(() => {
+		if (excalidrawAPI) {
+			if (excalidrawAPIUnsubscribe.current !== null) {
+				excalidrawAPIUnsubscribe.current();
+			}
+			excalidrawAPIUnsubscribe.current = excalidrawAPI.onChange(() => {
+				const excalidrawContent = excalidrawAPI.getSceneElements();
+				const doc: XcalidrawDocument = {
+					type: "excalidraw",
+					title: "asdfasdffas asdfasdf",
+					elements: excalidrawContent
+				};
+				dispatch(drawingContentChanged(JSON.stringify(doc)));
+			});
+		}
+	}, [excalidrawAPI, savedDrawing]);
 
-  useEffect(() => {
-    const sceneData = {
-      elements: savedDrawing.content ? JSON.parse(savedDrawing.content).elements : [],
-      appState: {}
-    };
+	useEffect(() => {
+		const sceneData = {
+			elements: savedDrawing.content ? JSON.parse(savedDrawing.content).elements : [],
+			appState: {}
+		};
 
-    excalidrawAPI?.updateScene(sceneData);
+		excalidrawAPI?.updateScene(sceneData);
 
-    document.title = savedDrawing.title;
-  }, [savedDrawing]);
+		document.title = savedDrawing.title;
+	}, [savedDrawing]);
 
-  const contentHasChanged = useMemo(() => {
-    return !isEqual(savedDrawing.content, currentContent);
-  }, [savedDrawing, currentContent]);
+	const contentHasChanged = useMemo(() => {
+		return !isEqual(savedDrawing.content, currentContent);
+	}, [savedDrawing, currentContent]);
 
-  console.log(">>>>>>>> contentHasChanged", contentHasChanged);
+	console.log(">>>>>>>> contentHasChanged", contentHasChanged);
 
-  return (
-    <div>
-      <div className="document-title">{savedDrawing.title}</div>
-      <div>
-        {currentDrawingStatus === "loading" && <LinearProgress sx={{ marginTop: "-4px" }} />
-        }
-        <div className="xcali-area">
-          <Excalidraw excalidrawAPI={api => setExcalidrawAPI(api)}>
-            <MainMenu>
-              <MainMenu.Item onSelect={() => setOpenDrawingDialogOpen(true)}>
-                Open
-              </MainMenu.Item>
-              <MainMenu.Item disabled={!contentHasChanged} onSelect={() => setSaveDrawingDialogOpen(true)}>
-                Save
-              </MainMenu.Item>
-            </MainMenu>
-          </Excalidraw>
-        </div>
-        <OpenDrawingDialog open={openDrawingDialogOpen} onClose={() => setOpenDrawingDialogOpen(false)} />
-        <SaveDrawingDialog open={saveDrawingDialogOpen} onClose={() => setSaveDrawingDialogOpen(false)} />
-      </div>
-    </div>
-  );
+	return (
+		<div>
+			<div className="document-title">{savedDrawing.title}</div>
+			<div>
+				{currentDrawingStatus === "loading" && <LinearProgress sx={{ marginTop: "-4px" }} />
+				}
+				<div className="xcali-area">
+					<Excalidraw excalidrawAPI={api => setExcalidrawAPI(api)}>
+						<MainMenu>
+							<MainMenu.Item onSelect={() => setOpenDrawingDialogOpen(true)}>
+								Open
+							</MainMenu.Item>
+							<MainMenu.Item disabled={!contentHasChanged} onSelect={() => setSaveDrawingDialogOpen(true)}>
+								Save
+							</MainMenu.Item>
+						</MainMenu>
+					</Excalidraw>
+				</div>
+				<OpenDrawingDialog open={openDrawingDialogOpen} onClose={() => setOpenDrawingDialogOpen(false)} />
+				<SaveDrawingDialog open={saveDrawingDialogOpen} onClose={() => setSaveDrawingDialogOpen(false)} />
+			</div>
+		</div>
+	);
 };
 
 export default App;

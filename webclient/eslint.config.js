@@ -1,45 +1,34 @@
+import js from "@eslint/js";
 import globals from "globals";
-import pluginJs from "@eslint/js";
 import tseslint from "typescript-eslint";
 import pluginReact from "eslint-plugin-react";
+import json from "@eslint/json";
+import markdown from "@eslint/markdown";
+import css from "@eslint/css";
+import stylistic from "@stylistic/eslint-plugin";
+import { defineConfig } from "eslint/config";
 
 
-/** @type {import('eslint').Linter.Config[]} */
-export default [
-  { files: ["**/*.{js,mjs,cjs,ts,jsx,tsx}"] },
-  { languageOptions: { globals: globals.browser } },
-  pluginJs.configs.recommended,
-  ...tseslint.configs.recommended,
-  pluginReact.configs.flat.recommended,
-  {
-    rules: {
-      "semi": 2,
-      "comma-dangle": ["error", "never"],
-      "object-curly-spacing": ["error", "always"],
-      "@typescript-eslint/consistent-type-imports": [
-        2,
-        {
-          "fixStyle": "separate-type-imports"
-        }
-      ],
-      "@typescript-eslint/no-restricted-imports": [
-        2,
-        {
-          "paths": [
-            {
-              "name": "react-redux",
-              "importNames": [
-                "useSelector",
-                "useStore",
-                "useDispatch"
-              ],
-              "message": "Please use pre-typed versions from `src/app/hooks.ts` instead."
-            }
-          ]
-        }
-      ],
-      "react/react-in-jsx-scope": "off",
-      "react/jsx-uses-react": "off"
-    }
-  }
-];
+export default defineConfig([
+	{ files: ["**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"], plugins: { js }, extends: ["js/recommended"] },
+	{ files: ["**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"], languageOptions: { globals: globals.browser } },
+	tseslint.configs.recommended,
+	pluginReact.configs.flat.recommended,
+	{ files: ["**/*.json"], plugins: { json }, language: "json/json", extends: ["json/recommended"] },
+	{ files: ["**/*.md"], plugins: { markdown }, language: "markdown/gfm", extends: ["markdown/recommended"] },
+	{ files: ["**/*.css"], plugins: { css }, language: "css/css", extends: ["css/recommended"] },
+	{
+		plugins: {
+			"@stylistic": stylistic
+		}
+	},
+	{
+		rules: {
+			"@stylistic/indent": ["error", "tab"],
+			"@stylistic/quotes": ["error", "double"],
+			"@stylistic/semi": ["error", "always"],
+			"@stylistic/comma-dangle": ["error"],
+			"no-undef": "warn"
+		}
+	}
+]);
