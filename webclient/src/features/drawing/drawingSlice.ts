@@ -92,7 +92,7 @@ export const drawingSlice = createAppSlice({
 				fulfilled: (state, action) => {
 					state.drawingInEdit.open.status = "idle";
 					state.drawingInEdit.savedDrawing = action.payload;
-					state.drawingInEdit.currentContent = action.payload.content;
+					state.drawingInEdit.currentContent = JSON.parse(action.payload.content);
 				},
 				rejected: state => {
 					state.drawingInEdit.open.status = "failed";

@@ -3,7 +3,6 @@ import { isEqual } from "lodash";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LinearProgress } from "@mui/material";
 import { Excalidraw, MainMenu } from "@excalidraw/excalidraw";
-import type { NonDeletedExcalidrawElement, Ordered } from "@excalidraw/excalidraw/element/types";
 import { OpenDrawingDialog } from "./features/drawing/OpenDrawing";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { useAppDispatch, useAppSelector } from "./app/hooks";
@@ -13,13 +12,6 @@ import { SaveDrawingDialog } from "./features/drawing/SaveDrawing";
 import "@excalidraw/excalidraw/index.css";
 
 import "./App.css";
-
-export type XcalidrawDocument = Readonly<{
-	type: string;
-	title: string;
-	elements: readonly Ordered<NonDeletedExcalidrawElement>[];
-}>;
-
 
 const App = () => {
 
@@ -42,12 +34,7 @@ const App = () => {
 			}
 			excalidrawAPIUnsubscribe.current = excalidrawAPI.onChange(() => {
 				const excalidrawContent = excalidrawAPI.getSceneElements();
-				const doc: XcalidrawDocument = {
-					type: "excalidraw",
-					title: "asdfasdffas asdfasdf",
-					elements: excalidrawContent
-				};
-				dispatch(drawingContentChanged(JSON.stringify(doc)));
+				dispatch(drawingContentChanged(JSON.stringify(excalidrawContent)));
 			});
 		}
 	}, [excalidrawAPI, savedDrawing]);
@@ -66,8 +53,6 @@ const App = () => {
 	const contentHasChanged = useMemo(() => {
 		return !isEqual(savedDrawing.content, currentContent);
 	}, [savedDrawing, currentContent]);
-
-	console.log(">>>>>>>> contentHasChanged", contentHasChanged);
 
 	return (
 		<div>

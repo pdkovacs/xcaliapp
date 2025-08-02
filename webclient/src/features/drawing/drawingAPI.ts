@@ -1,9 +1,18 @@
+import { NonDeletedExcalidrawElement, Ordered } from "@excalidraw/excalidraw/element/types";
 import axios from "axios";
 
 export interface Drawing {
 	readonly title: string;
 	readonly content: string;
 }
+
+export type XcalidrawContent = Ordered<NonDeletedExcalidrawElement>[];
+
+export type XcalidrawDocument = Readonly<{
+	type: string;
+	title: string;
+	elements: XcalidrawContent;
+}>;
 
 const ITEM_TO_BE_DISCARDED = "___?????___";
 
@@ -13,13 +22,16 @@ export const fetchDrawingList = async (): Promise<string[]> => {
 };
 
 export const fetchDrawing = async (title: string) => {
-	console.info("Fetching drawing: ", title);
 	return await axios.get("/api/drawing", { params: { title: plainToBase64(title) } });
 };
 
 export const saveDrawing = async (title: string, content: string) => {
-	console.info("Saving drawing of length ", content.length, ", as ", title);
-	await axios.put("/api/drawing", JSON.stringify({ title: plainToBase64(title), content }), { headers: { "Content-Type": "application/json" } });
+	const doc: XcalidrawDocument = {
+		type: "excalidraw",
+		title,
+		elements: JSON.parse(content)
+	};
+	await axios.put("/api/drawing", JSON.stringify({ title: plainToBase64(title), content: JSON.stringify(doc) }), { headers: { "Content-Type": "application/json" } });
 };
 
 const base64ToPlain = (base64: string): string => {
@@ -49,7 +61,3 @@ const bytesToBase64 = (bytes: Uint8Array<ArrayBufferLike>): string => {
 	).join("");
 	return btoa(binString);
 };
-
-// Usage
-// bytesToBase64(new TextEncoder().encode("a Ā 𐀀 文 🦄")); // "YSDEgCDwkICAIOaWhyDwn6aE"
-// new TextDecoder().decode(base64ToBytes("YSDEgCDwkICAIOaWhyDwn6aE")); // "a Ā 𐀀 文 🦄"
