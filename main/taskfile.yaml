@@ -53,4 +53,19 @@ tasks:
     cmds:
       - |
         echo "Top: DRAWINGS_BUCKET_NAME="{{.DRAWINGS_BUCKET_NAME}}
-
+  release-webapp:
+    cmds:
+      - task: webclient:build
+      - |
+        oses="linux windows darwin"
+        arches="amd64 arm64"
+        for os in $oses;
+        do
+          for arch in $arches;
+          do
+            export GOOS=$os
+            export GOARCH=$arch
+            echo "GOOS: ${GOOS} GOARCH: ${GOARCH}"
+            task server:with-webclient
+          done;
+        done;
