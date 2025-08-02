@@ -2,6 +2,12 @@ version: "3"
 
 tasks:
   build:
+    sources:
+      - ./src/**/*
+      - ./taskfile.yaml
+    generates:
+      - ./dist/assets/**
+      - ./dist/index.html
     cmds:
       - |
         npm ci
