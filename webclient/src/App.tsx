@@ -69,6 +69,13 @@ const App = () => {
 							<MainMenu.Item disabled={!contentHasChanged} onSelect={() => setSaveDrawingDialogOpen(true)}>
 								Save
 							</MainMenu.Item>
+							<MainMenu.DefaultItems.Export/>
+							<MainMenu.DefaultItems.SaveAsImage/>
+							<MainMenu.DefaultItems.CommandPalette/>
+							<MainMenu.Separator/>
+							<MainMenu.DefaultItems.ToggleTheme/>
+							<MainMenu.Separator/>
+							<MainMenu.DefaultItems.ChangeCanvasBackground/>
 						</MainMenu>
 					</Excalidraw>
 				</div>
