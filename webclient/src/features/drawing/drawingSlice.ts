@@ -104,15 +104,14 @@ export const drawingSlice = createAppSlice({
 		}),
 		saveDrawingContent: create.asyncThunk(
 			async (payload: SaveDrawingActionPayload) => {
-				const response = await saveDrawing(payload.title, payload.content);
-				// The value we return becomes the `fulfilled` action payload
-				return response;
+				await saveDrawing(payload.title, payload.content);
 			},
 			{
 				pending: state => {
 					state.drawingInEdit.save.status = "loading";
 				},
-				fulfilled: (state) => {
+				fulfilled: (state, action) => {
+					state.drawingInEdit.savedDrawing = action.meta.arg;
 					state.drawingInEdit.save.status = "idle";
 				},
 				rejected: state => {
