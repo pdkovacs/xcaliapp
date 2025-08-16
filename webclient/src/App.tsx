@@ -84,8 +84,10 @@ const App = () => {
 					}
 					<div className="xcali-area">
 						<Excalidraw
+							name={savedDrawing.title}
 							excalidrawAPI={api => setExcalidrawAPI(api)}
 							theme={prefersDarkMode ? "dark" : "light"}
+							autoFocus={true}
 						>
 							<MainMenu>
 								<MainMenu.Item onSelect={() => setOpenDrawingDialogOpen(true)}>
