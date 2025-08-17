@@ -1,0 +1,25 @@
+.dialogTitle {
+	display: flex;
+	justify-content: space-between;
+}
+
+.wideDialogContent {
+	width: 700px;
+}
+
+.overflowingDialogContent {
+	overflow: auto;
+}
+
+.drawingListItem {
+	display: flex;
+	align-items: center;
+}
+
+.dialogContent {
+	margin-top: 4px;
+}
+
+.workInProgress {
+	margin-top: 0;
+}

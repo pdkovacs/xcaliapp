@@ -3,10 +3,20 @@ import { createAppSlice } from "../../app/createAppSlice";
 import type { Drawing } from "./drawingAPI";
 import { fetchDrawing, fetchDrawingList, saveDrawing } from "./drawingAPI";
 
-type AsyncOperationState = "idle" | "loading" | "failed";
+export enum AsyncOperationState {
+	idle = "idle",
+	inProgress = "inProgress",
+	failed = "failed"
+};
+
 interface SaveDrawingActionPayload {
 	readonly title: string;
 	readonly content: string;
+}
+
+interface RenameDrawingActionPayload {
+	readonly from: string;
+	readonly to: string;
 }
 
 export interface DrawingSliceState {
@@ -26,36 +36,51 @@ export interface DrawingSliceState {
 		savedDrawing: Drawing;
 		currentContent: string;
 	};
+	drawingManagement: {
+		rename: {
+			status: AsyncOperationState
+		}
+		delete: {
+			status: AsyncOperationState
+		}
+	}
 }
 
 const initialState: DrawingSliceState = {
 	drawingList: {
 		getList: {
-			status: "idle"
+			status: AsyncOperationState.idle
 		},
 		value: []
 	},
+
 	drawingInEdit: {
 		open: {
-			status: "idle"
+			status: AsyncOperationState.idle
 		},
 		save: {
-			status: "idle"
+			status: AsyncOperationState.idle
 		},
 		savedDrawing: {
 			title: "",
 			content: ""
 		},
 		currentContent: ""
+	},
+	drawingManagement: {
+		rename: {
+			status: AsyncOperationState.idle
+		},
+		delete: {
+			status: AsyncOperationState.idle
+		}
 	}
 };
 
 // If you are not using async thunks you can use the standalone `createSlice`.
 export const drawingSlice = createAppSlice({
 	name: "drawing",
-	// `createSlice` will infer the state type from the `initialState` argument
 	initialState,
-	// The `reducers` field lets us define reducers and generate associated actions
 	reducers: create => ({
 		getDrawingList: create.asyncThunk(
 			async () => {
@@ -65,14 +90,14 @@ export const drawingSlice = createAppSlice({
 			},
 			{
 				pending: state => {
-					state.drawingList.getList.status = "loading";
+					state.drawingList.getList.status = AsyncOperationState.inProgress;
 				},
 				fulfilled: (state, action) => {
-					state.drawingList.getList.status = "idle";
+					state.drawingList.getList.status = AsyncOperationState.idle;
 					state.drawingList.value = action.payload;
 				},
 				rejected: state => {
-					state.drawingList.getList.status = "failed";
+					state.drawingList.getList.status = AsyncOperationState.failed;
 				}
 			}
 		),
@@ -87,15 +112,15 @@ export const drawingSlice = createAppSlice({
 			},
 			{
 				pending: state => {
-					state.drawingInEdit.open.status = "loading";
+					state.drawingInEdit.open.status = AsyncOperationState.inProgress;
 				},
 				fulfilled: (state, action) => {
-					state.drawingInEdit.open.status = "idle";
+					state.drawingInEdit.open.status = AsyncOperationState.idle;
 					state.drawingInEdit.savedDrawing = action.payload;
 					state.drawingInEdit.currentContent = JSON.parse(action.payload.content);
 				},
 				rejected: state => {
-					state.drawingInEdit.open.status = "failed";
+					state.drawingInEdit.open.status = AsyncOperationState.failed;
 				}
 			}
 		),
@@ -108,17 +133,22 @@ export const drawingSlice = createAppSlice({
 			},
 			{
 				pending: state => {
-					state.drawingInEdit.save.status = "loading";
+					state.drawingInEdit.save.status = AsyncOperationState.inProgress;
 				},
 				fulfilled: (state, action) => {
 					state.drawingInEdit.savedDrawing = action.meta.arg;
-					state.drawingInEdit.save.status = "idle";
+					state.drawingInEdit.save.status = AsyncOperationState.idle;
 				},
 				rejected: state => {
-					state.drawingInEdit.save.status = "failed";
+					state.drawingInEdit.save.status = AsyncOperationState.failed;
 				}
 			}
-		)
+		),
+		renameDrawing: create.reducer((state, action: PayloadAction<RenameDrawingActionPayload>) => {
+			if (state.drawingInEdit.savedDrawing.title === action.payload.from) {
+				state.drawingInEdit.savedDrawing.title = action.payload.to;
+			}
+		})
 	}),
 	// You can define your selectors here. These selectors receive the slice
 	// state as their first argument.

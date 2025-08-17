@@ -1,12 +1,12 @@
 import React from "react";
-import { isEqual } from "lodash";
+import { isEmpty, isEqual } from "lodash";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LinearProgress, useMediaQuery } from "@mui/material";
 import { Excalidraw, MainMenu, THEME } from "@excalidraw/excalidraw";
 import { OpenDrawingDialog } from "./features/drawing/OpenDrawing";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { useAppDispatch, useAppSelector } from "./app/hooks";
-import { selectSavedDrawing, selectDrawingToEditStatus, selectCurrentDrawingContent, drawingContentChanged } from "./features/drawing/drawingSlice";
+import { selectSavedDrawing, selectDrawingToEditStatus, selectCurrentDrawingContent, drawingContentChanged, AsyncOperationState } from "./features/drawing/drawingSlice";
 import { SaveDrawingDialog } from "./features/drawing/SaveDrawing";
 
 import { ThemeProvider, createTheme, useColorScheme } from "@mui/material/styles";
@@ -16,6 +16,9 @@ import CssBaseline from "@mui/material/CssBaseline";
 import "@excalidraw/excalidraw/index.css";
 
 import "./App.css";
+import { ManageDrawingsDialog } from "./features/drawing/ManageDrawingsDialog";
+import { selectErrors } from "./features/app/appSlice";
+import { useReporters } from "./utils/use-reporters";
 
 const App = () => {
 
@@ -32,8 +35,18 @@ const App = () => {
 
 	const [openDrawingDialogOpen, setOpenDrawingDialogOpen] = useState(false);
 	const [saveDrawingDialogOpen, setSaveDrawingDialogOpen] = useState(false);
+	const [manageDrawingsDialogOpen, setManageDrawingsDialogOpen] = useState(false);
+
+	const appErrors = useAppSelector(selectErrors);
+	const { reportError } = useReporters();
 
 	const dispatch = useAppDispatch();
+
+	useEffect(() => {
+		if (!isEmpty(appErrors)) {
+			reportError(appErrors[0]);
+		}
+	}, [appErrors]);
 
 	useEffect(() => {
 		if (excalidrawAPI) {
@@ -80,7 +93,7 @@ const App = () => {
 			<div>
 				<div className="document-title">{savedDrawing.title}</div>
 				<div>
-					{currentDrawingStatus === "loading" && <LinearProgress sx={{ marginTop: "-4px" }} />
+					{currentDrawingStatus === AsyncOperationState.inProgress && <LinearProgress sx={{ marginTop: "-4px" }} />
 					}
 					<div className="xcali-area">
 						<Excalidraw
@@ -96,6 +109,9 @@ const App = () => {
 								<MainMenu.Item disabled={!contentHasChanged} onSelect={() => setSaveDrawingDialogOpen(true)}>
 									Save
 								</MainMenu.Item>
+								<MainMenu.Item disabled={!contentHasChanged} onSelect={() => setManageDrawingsDialogOpen(true)}>
+									Manage drawings
+								</MainMenu.Item>
 								<MainMenu.DefaultItems.Export />
 								<MainMenu.DefaultItems.SaveAsImage />
 								<MainMenu.DefaultItems.CommandPalette />
@@ -107,6 +123,7 @@ const App = () => {
 					</div>
 					<OpenDrawingDialog open={openDrawingDialogOpen} onClose={() => setOpenDrawingDialogOpen(false)} />
 					<SaveDrawingDialog open={saveDrawingDialogOpen} onClose={() => setSaveDrawingDialogOpen(false)} />
+					<ManageDrawingsDialog open={manageDrawingsDialogOpen} onClose={() => setManageDrawingsDialogOpen(false)} />
 				</div>
 			</div>
 

@@ -2,7 +2,7 @@ import React from "react";
 import { Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { useEffect, useState } from "react";
-import { saveDrawingContent, selectCurrentDrawingContent, selectSavedDrawing, selectSaveDrawingStatus } from "./drawingSlice";
+import { AsyncOperationState, saveDrawingContent, selectCurrentDrawingContent, selectSavedDrawing, selectSaveDrawingStatus } from "./drawingSlice";
 
 import style from "./Drawing.module.css";
 import { useReporters } from "../../utils/use-reporters";
@@ -25,7 +25,7 @@ export const SaveDrawingDialog = ({ open, onClose }: SaveDrawingDialogProps) => 
 	const { reportError } = useReporters();
 
 	useEffect(() => {
-		if (savingStatus === "failed") {
+		if (savingStatus === AsyncOperationState.failed) {
 			reportError("Failed to save drawing");
 		}
 	}, [savingStatus]);
@@ -55,11 +55,11 @@ export const SaveDrawingDialog = ({ open, onClose }: SaveDrawingDialogProps) => 
 			<DialogTitle>Save drawing</DialogTitle>
 			<DialogContent>{
 				<div className={style.openSaveDrawingDialogContent}>{
-					savingStatus === "loading"
+					savingStatus === AsyncOperationState.inProgress
 						? <div className={style.fetchInProgress}>
 							<CircularProgress />
 						</div>
-						: savingStatus === "idle" || savingStatus === "failed"
+						: savingStatus === AsyncOperationState.idle || savingStatus === AsyncOperationState.failed
 							? <TitleSelector title={titleToOffer} onChange={title => setSelectedTitle(title)} />
 							: null
 				}</div>

@@ -34,6 +34,19 @@ export const saveDrawing = async (title: string, content: string) => {
 	await axios.put("/api/drawing", JSON.stringify({ title: plainToBase64(title), content: JSON.stringify(doc) }), { headers: { "Content-Type": "application/json" } });
 };
 
+export const renameDrawing = async (from: string, to: string): Promise<void> => {
+	console.log(">>>>>> renameDrawing: from: ", from, ", to:", to);
+	await axios.patch("/api/drawing/" + plainToBase64(from), { newTitle: to });
+};
+
+export const deleteDrawings = async (titles: string[]): Promise<void> => {
+	console.log(">>>>>>>> deleteDrawings: ", titles.join(", "));
+	for (const title of titles) {
+		console.log(">>>>>>>> deleteDrawing ", title);
+		await axios.delete("/api/drawing/" + plainToBase64(title));
+	}
+};
+
 const base64ToPlain = (base64: string): string => {
 	return new TextDecoder().decode(base64ToBytes(base64));
 };

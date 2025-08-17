@@ -2,7 +2,7 @@ import React from "react";
 import { Alert, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Select } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { useEffect, useState } from "react";
-import { getDrawingContent, getDrawingList, selectDrawingList, selectDrawingListStatus } from "./drawingSlice";
+import { AsyncOperationState, getDrawingContent, getDrawingList, selectDrawingList, selectDrawingListStatus } from "./drawingSlice";
 
 import style from "./Drawing.module.css";
 
@@ -13,7 +13,6 @@ interface OpenDrawingDialogProps {
 
 export const OpenDrawingDialog = ({ open, onClose }: OpenDrawingDialogProps) => {
 
-	const drawingList = useAppSelector(selectDrawingList);
 	const drawingListStatus = useAppSelector(selectDrawingListStatus);
 
 	const [titleOfSelectedDrawing, setTitleOfSelectedDrawing] = useState<string>("");
@@ -39,11 +38,11 @@ export const OpenDrawingDialog = ({ open, onClose }: OpenDrawingDialogProps) => 
 			<DialogTitle>Open drawing</DialogTitle>
 			<DialogContent>
 				<div className={style.openSaveDrawingDialogContent}>{
-					drawingListStatus === "loading"
+					drawingListStatus === AsyncOperationState.inProgress
 						? <CircularProgress />
-						: drawingListStatus === "failed"
+						: drawingListStatus === AsyncOperationState.failed
 							? <Alert severity="error">Failed to load drawing list</Alert>
-							: <DrawingSelector drawingTitles={drawingList} selectedDrawing={titleOfSelectedDrawing} onChange={selection => setTitleOfSelectedDrawing(selection)}/>
+							: <DrawingSelector selectedDrawing={titleOfSelectedDrawing} onChange={selection => setTitleOfSelectedDrawing(selection)} />
 				}</div>
 			</DialogContent>
 			<DialogActions>
@@ -55,13 +54,14 @@ export const OpenDrawingDialog = ({ open, onClose }: OpenDrawingDialogProps) => 
 };
 
 interface DrawingSelectorProps {
-	readonly drawingTitles: string[];
 	readonly selectedDrawing: string;
 	readonly onChange: (selectedDrawing: string) => void;
 }
 
-const DrawingSelector = ({ drawingTitles: drawingTitles, selectedDrawing, onChange }:  DrawingSelectorProps) => {
-	const selectedTitle = selectedDrawing || drawingTitles[0] || "";
+const DrawingSelector = ({ selectedDrawing, onChange }: DrawingSelectorProps) => {
+	const drawingList = useAppSelector(selectDrawingList);
+
+	const selectedTitle = selectedDrawing || drawingList[0] || "";
 	useEffect(() => {
 		onChange(selectedTitle);
 	}, [selectedTitle]);
@@ -71,7 +71,7 @@ const DrawingSelector = ({ drawingTitles: drawingTitles, selectedDrawing, onChan
 			onChange={event => onChange(event.target.value)}
 			value={selectedTitle}
 		>{
-				drawingTitles.map(drawingTitle => <MenuItem key={drawingTitle} value={drawingTitle}>{drawingTitle}</MenuItem>) 
+				drawingList.map(drawingTitle => <MenuItem key={drawingTitle} value={drawingTitle}>{drawingTitle}</MenuItem>)
 			}</Select>
 	);
 };
