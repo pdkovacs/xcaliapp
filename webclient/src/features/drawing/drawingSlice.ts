@@ -18,10 +18,10 @@ export interface DrawingSliceState {
 	};
 	drawingInEdit: {
 		open: {
-			status: AsyncOperationState; 
+			status: AsyncOperationState;
 		}
 		save: {
-			status: AsyncOperationState; 
+			status: AsyncOperationState;
 		};
 		savedDrawing: Drawing;
 		currentContent: string;
@@ -134,7 +134,7 @@ export const drawingSlice = createAppSlice({
 
 // Action creators are generated for each case reducer function.
 export const { getDrawingList, getDrawingContent, drawingContentChanged, saveDrawingContent } =
-  drawingSlice.actions;
+	drawingSlice.actions;
 
 // Selectors returned by `slice.selectors` take the root state as their first argument.
 export const { selectDrawingList,
