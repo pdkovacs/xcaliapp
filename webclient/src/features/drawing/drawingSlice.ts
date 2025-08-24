@@ -1,7 +1,7 @@
 import type { PayloadAction } from "@reduxjs/toolkit";
 import { createAppSlice } from "../../app/createAppSlice";
 import type { Drawing } from "./drawingAPI";
-import { fetchDrawing, fetchDrawingList, saveDrawing } from "./drawingAPI";
+import { fetchDrawing, fetchDrawingList, plainToBase64, saveDrawing } from "./drawingAPI";
 
 export enum AsyncOperationState {
 	idle = "idle",
@@ -104,6 +104,10 @@ export const drawingSlice = createAppSlice({
 		getDrawingContent: create.asyncThunk(
 			async (title: string) => {
 				const response = await fetchDrawing(title);
+				const desiredPathname = `/drawings/${plainToBase64(title)}`;
+				if (window.location.pathname !== desiredPathname) {
+					window.history.pushState({}, title, desiredPathname);
+				}
 				// The value we return becomes the `fulfilled` action payload
 				return {
 					title,

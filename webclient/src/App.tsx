@@ -1,12 +1,12 @@
 import React from "react";
-import { isEmpty, isEqual } from "lodash";
+import { isEmpty, isEqual, isNil } from "lodash";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createTheme, CssBaseline, LinearProgress, ThemeProvider, useColorScheme, useMediaQuery } from "@mui/material";
 import { Excalidraw, MainMenu, THEME } from "@excalidraw/excalidraw";
 import { OpenDrawingDialog } from "./features/drawing/OpenDrawing";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { useAppDispatch, useAppSelector } from "./app/hooks";
-import { selectSavedDrawing, selectDrawingToEditStatus, selectCurrentDrawingContent, drawingContentChanged, AsyncOperationState } from "./features/drawing/drawingSlice";
+import { selectSavedDrawing, selectDrawingToEditStatus, selectCurrentDrawingContent, drawingContentChanged, AsyncOperationState, getDrawingContent } from "./features/drawing/drawingSlice";
 import { SaveDrawingDialog } from "./features/drawing/SaveDrawing";
 
 import "@excalidraw/excalidraw/index.css";
@@ -15,6 +15,19 @@ import "./App.css";
 import { ManageDrawingsDialog } from "./features/drawing/ManageDrawingsDialog";
 import { selectErrors } from "./features/app/appSlice";
 import { useReporters } from "./utils/use-reporters";
+import { base64ToPlain } from "./features/drawing/drawingAPI";
+
+const darkTheme = createTheme({
+	colorSchemes: {
+		dark: true
+	}
+});
+
+const lightTheme = createTheme({
+	colorSchemes: {
+		light: true
+	}
+});
 
 const App = () => {
 
@@ -45,6 +58,14 @@ const App = () => {
 	}, [appErrors]);
 
 	useEffect(() => {
+		const drawingTitle = window.location.pathname.substring("/drawings/".length);
+		const plainTitle = base64ToPlain(drawingTitle);
+		if (plainTitle !== savedDrawing.title) {
+			dispatch(getDrawingContent(plainTitle));
+		}
+	}, [window.location]);
+
+	useEffect(() => {
 		if (excalidrawAPI) {
 			if (excalidrawAPIUnsubscribe.current !== null) {
 				excalidrawAPIUnsubscribe.current();
@@ -57,35 +78,29 @@ const App = () => {
 				setMuiColorScehemeMode(xcaliAppState.theme === THEME.DARK ? "dark" : "light");
 			});
 		}
-	}, [excalidrawAPI, savedDrawing]);
+	}, [excalidrawAPI]);
 
 	useEffect(() => {
-		const sceneData = {
-			elements: savedDrawing.content ? JSON.parse(savedDrawing.content).elements : [],
-			appState: {}
-		};
-
-		excalidrawAPI?.updateScene(sceneData);
+		if (excalidrawAPI && savedDrawing?.content) {
+			const sceneData = {
+				elements: savedDrawing.content ? JSON.parse(savedDrawing.content).elements : [],
+				appState: {}
+			};
+			excalidrawAPI?.updateScene(sceneData);
+		}
 
 		document.title = savedDrawing.title;
-	}, [savedDrawing]);
+	}, [savedDrawing.content]);
 
 	const contentHasChanged = useMemo(() => {
 		return !isEqual(savedDrawing.content, currentContent);
 	}, [savedDrawing, currentContent]);
 
-
-	const darkTheme = createTheme({
-		colorSchemes: {
-			dark: true
-		}
-	});
-
-	const lightTheme = createTheme({
-		colorSchemes: {
-			light: true
-		}
-	});
+	const excalidrawElements = useMemo(() => {
+		const hasSavedContent = !isNil(savedDrawing.content) && !isEmpty(savedDrawing.content);
+		const content = JSON.parse(hasSavedContent ? savedDrawing.content : "{}");
+		return hasSavedContent ? content.elements : [];
+	}, [savedDrawing.content]);
 
 	return (
 		<ThemeProvider theme={prefersDarkMode ? darkTheme : lightTheme}>
@@ -94,14 +109,18 @@ const App = () => {
 			<div>
 				<div className="document-title">{savedDrawing.title}</div>
 				<div>
-					{currentDrawingStatus === AsyncOperationState.inProgress && <LinearProgress sx={{ marginTop: "-4px" }} />
+					{
+						currentDrawingStatus === AsyncOperationState.inProgress && <LinearProgress sx={{ marginTop: "-4px" }} />
 					}
 					<div className="xcali-area">
 						<Excalidraw
 							name={savedDrawing.title}
-							excalidrawAPI={api => setExcalidrawAPI(api)}
+							excalidrawAPI={setExcalidrawAPI}
 							theme={prefersDarkMode ? "dark" : "light"}
 							autoFocus={true}
+							initialData={{
+								elements: excalidrawElements
+							}}
 						>
 							<MainMenu>
 								<MainMenu.Item onSelect={() => setOpenDrawingDialogOpen(true)}>
@@ -128,7 +147,7 @@ const App = () => {
 				</div>
 			</div>
 
-		</ThemeProvider>
+		</ThemeProvider >
 	);
 };
 

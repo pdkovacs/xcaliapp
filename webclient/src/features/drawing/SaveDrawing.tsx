@@ -37,8 +37,6 @@ export const SaveDrawingDialog = ({ open, onClose }: SaveDrawingDialogProps) => 
 
 	const titleToOffer = selectedTitle || savedDrawing.title;
 
-	console.log(">>>>>>> selectedTitle: ", selectedTitle, ", savedDrawing.title: ", savedDrawing.title, ", titleToOffer:", titleToOffer);
-
 	useEffect(() => {
 		setSelectedTitle(titleToOffer);
 	}, [titleToOffer]);

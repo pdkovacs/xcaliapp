@@ -55,11 +55,11 @@ export const deleteDrawings = async (titles: string[]): Promise<void> => {
 	}
 };
 
-const base64ToPlain = (base64: string): string => {
+export const base64ToPlain = (base64: string): string => {
 	return new TextDecoder().decode(base64ToBytes(base64));
 };
 
-const plainToBase64 = (plain: string): string => {
+export const plainToBase64 = (plain: string): string => {
 	return bytesToBase64(new TextEncoder().encode(plain));
 };
 
