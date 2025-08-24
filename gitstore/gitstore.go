@@ -27,6 +27,14 @@ func (store *LocalGitStore) PutDrawing(ctx context.Context, title string, conten
 	return store.repo.AddBlob(ctx, blobInfo)
 }
 
+func (store *LocalGitStore) CopyDrawing(ctx context.Context, sourceTitle string, destinationTitle string, modifiedBy string) error {
+	return store.repo.CopyBlob(ctx, sourceTitle, destinationTitle, modifiedBy)
+}
+
+func (store *LocalGitStore) DeleteDrawing(ctx context.Context, title string, modifiedBy string) error {
+	return store.repo.DeleteBlob(ctx, title, modifiedBy)
+}
+
 func (store *LocalGitStore) ListDrawingTitles(ctx context.Context) ([]string, error) {
 	return store.repo.ListBlobKeys(ctx)
 }
