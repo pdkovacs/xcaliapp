@@ -39,6 +39,40 @@ func (store *DrawingStore) PutDrawing(ctx context.Context, title string, content
 	return nil
 }
 
+// TODO: use the modifiedBy parameter
+func (store *DrawingStore) CopyDrawing(ctx context.Context, sourceTitle string, targetTitle string, modifiedBy string) error {
+	copySource := fmt.Sprintf("%s/%s", drawingContentObjectKeyPrefix, sourceTitle)
+	key := fmt.Sprintf("%s/%s", drawingContentObjectKeyPrefix, targetTitle)
+
+	input := s3.CopyObjectInput{
+		Bucket:     &store.bucketName,
+		Key:        &key,
+		CopySource: &copySource,
+	}
+	_, err := store.s3Client.CopyObject(ctx, &input)
+	if err != nil {
+		return fmt.Errorf("failed to copy object for drawing %s to %s: %w", copySource, key, err)
+	}
+
+	return nil
+}
+
+// TODO: use the modifiedBy parameter
+func (store *DrawingStore) DeleteDrawing(ctx context.Context, title string, modifiedBy string) error {
+	key := fmt.Sprintf("%s/%s", drawingContentObjectKeyPrefix, title)
+
+	input := s3.DeleteObjectInput{
+		Bucket: &store.bucketName,
+		Key:    &key,
+	}
+	_, err := store.s3Client.DeleteObject(ctx, &input)
+	if err != nil {
+		return fmt.Errorf("failed to delete object for drawing %s: %w", key, err)
+	}
+
+	return nil
+}
+
 func (store *DrawingStore) ListDrawingTitles(ctx context.Context) ([]string, error) {
 	return listObjectKeys(ctx, store.s3Client, store.bucketName, drawingContentObjectKeyPrefix, true)
 }

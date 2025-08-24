@@ -1,10 +1,10 @@
 package test
 
 import (
-	"vcblobstore/git/gitlab"
 	"context"
 	"os"
 	"testing"
+	"vcblobstore/git/gitlab"
 
 	"github.com/stretchr/testify/suite"
 )
@@ -23,7 +23,7 @@ func TestGitlabRepoTestSuite(t *testing.T) {
 	suite.Run(t, &gitlabRepoTestSuite{ctx: context.Background(), t: t})
 }
 
-func (testSuite *gitlabRepoTestSuite) TestAddIconfile() {
+func (testSuite *gitlabRepoTestSuite) TestAddBlob() {
 	var err error
 	blob := TestData[0]
 	err = testSuite.gitRepo.AddBlob(testSuite.ctx, blob)
@@ -34,5 +34,5 @@ func (testSuite *gitlabRepoTestSuite) TestAddIconfile() {
 	testSuite.NoError(err)
 	// testSuite.Equal(len("8e9b80b5155dea01e5175bc819bbe364dbc07a66"), len(sha1))
 	// testSuite.assertGitCleanStatus()
-	// testSuite.assertFileInRepo(icon.Name, iconfile)
+	// testSuite.assertFileInRepo(icon.Name, blob)
 }

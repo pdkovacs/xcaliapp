@@ -31,7 +31,7 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 		if (open) {
 			dispatch(getDrawingList());
 		}
-	}, [open, selectedTitles]);
+	}, [open]);
 
 	const enabledActions = useMemo(() => {
 		if (isEmpty(selectedTitles)) {
@@ -60,17 +60,17 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 				case Action.RENAME:
 					setRenameDrawingDialogOpen(false);
 					if (confirmed !== false) {
-						await new Promise(resolve => setTimeout(resolve, 2000));
 						await renameDrawing(selectedTitles[0], confirmed as string);
 						setSelectedTitles([]);
+						dispatch(getDrawingList());
 					}
 					break;
 				case Action.DELETE:
 					setDeleteDrawingsDialogOpen(false);
 					if (confirmed) {
-						await new Promise(resolve => setTimeout(resolve, 2000));
 						await deleteDrawings(selectedTitles);
 						setSelectedTitles([]);
+						dispatch(getDrawingList());
 					}
 					break;
 			}
@@ -114,7 +114,7 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 			</DialogActions>
 		</Dialog>
 
-		<RenameDrawingDialog open={renameDrawingDialogOpen} title={selectedTitles[0]} onClose={confirmed => handleActionDialogClosed(Action.RENAME, confirmed)} />
+		<RenameDrawingDialog open={renameDrawingDialogOpen} title={selectedTitles[0] ?? ""} onClose={confirmed => handleActionDialogClosed(Action.RENAME, confirmed)} />
 		<DeleteDrawingsDialog open={deleteDrawingsDialogOpen} titles={selectedTitles} onClose={confirmed => handleActionDialogClosed(Action.DELETE, confirmed)} />
 		<ErrorDialog open={actionExecutionError !== null} onClose={() => setActionExecutionError(null)} data={actionExecutionError!} />
 	</>;

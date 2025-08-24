@@ -3,6 +3,7 @@ package local
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -99,9 +100,9 @@ func (repo *Git) executeBlobManipulationJob(blobOperation func() error, messages
 		}
 	}()
 
-	blopOpErr := blobOperation()
-	if blopOpErr != nil {
-		return fmt.Errorf("failed iconfile operation: %w", err)
+	err = blobOperation()
+	if err != err {
+		return fmt.Errorf("failed blob operation: %w", err)
 	}
 	out, err = repo.ExecuteGitCommand([]string{"add", "-A"})
 	if err != nil {
@@ -176,6 +177,64 @@ func (repo *Git) AddBlob(ctx context.Context, blob vcblobstore.BlobInfo) error {
 
 	if err != nil {
 		return fmt.Errorf("failed to add blobfile %v to git repository at %s: %w", path, repo.location, err)
+	}
+	return nil
+}
+
+func copyBlobContents(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		cerr := out.Close()
+		if err == nil {
+			err = cerr
+		}
+	}()
+	if _, err = io.Copy(out, in); err != nil {
+		return err
+	}
+	err = out.Sync()
+	return err
+}
+
+func (repo *Git) CopyBlob(_ context.Context, sourceKey string, destinationKey string, modifiedBy string) error {
+	jobTextProvider := gitJobMessages{
+		"copy blob file",
+		"blob file version added",
+	}
+
+	sourcePath, srcPathErr := repo.pathToFile(sourceKey)
+	if srcPathErr != nil {
+		return srcPathErr
+	}
+	destinationPath, destPathErr := repo.pathToFile(destinationKey)
+	if destPathErr != nil {
+		return destPathErr
+	}
+
+	blobOperation := func() error {
+		err := copyBlobContents(sourcePath, destinationPath)
+		if err != nil {
+			return fmt.Errorf("failed to copy file contents from %s to %s: %w", sourceKey, destinationKey, err)
+		}
+		return nil
+	}
+
+	var err error
+	Enqueue(func() {
+		err = repo.executeBlobManipulationJob(blobOperation, jobTextProvider, modifiedBy)
+	})
+
+	if err != nil {
+		repo.logger.Debug().Err(err).Msg("executeBlobManipulationJob failed while copying blob")
+		return fmt.Errorf("failed to copy blobfile from %s to %s to git repository at %s: %w", sourceKey, destinationKey, repo.location, err)
 	}
 	return nil
 }

@@ -1,5 +1,5 @@
 import { NonDeletedExcalidrawElement, Ordered } from "@excalidraw/excalidraw/element/types";
-import axios from "axios";
+import axios, { AxiosRequestConfig } from "axios";
 
 export interface Drawing {
 	readonly title: string;
@@ -36,7 +36,16 @@ export const saveDrawing = async (title: string, content: string) => {
 
 export const renameDrawing = async (from: string, to: string): Promise<void> => {
 	console.log(">>>>>> renameDrawing: from: ", from, ", to:", to);
-	await axios.patch("/api/drawing/" + plainToBase64(from), { newTitle: to });
+	const requestConfig: AxiosRequestConfig = {
+		url: "/api/drawing",
+		method: "patch",
+		data: JSON.stringify({
+			title: plainToBase64(from),
+			newTitle: plainToBase64(to)
+		}),
+		headers: { "Content-Type": "application/json" }
+	};
+	await axios.request(requestConfig);
 };
 
 export const deleteDrawings = async (titles: string[]): Promise<void> => {

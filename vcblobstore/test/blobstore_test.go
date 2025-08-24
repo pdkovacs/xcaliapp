@@ -1,14 +1,14 @@
 package test
 
 import (
-	"vcblobstore"
-	"vcblobstore/git"
-	"vcblobstore/git/gitlab"
 	"context"
 	"fmt"
 	"os"
 	"testing"
 	"time"
+	"vcblobstore"
+	"vcblobstore/git"
+	"vcblobstore/git/gitlab"
 
 	"github.com/stretchr/testify/suite"
 )
@@ -114,22 +114,22 @@ func (s *BlobstoreTestSuite) TestAcceptsNewBlobWhenNotEmpty() {
 	blob1 := TestData[0]
 	blob2 := TestData[1]
 
-	errorWhenAddingFirstIconFile := s.RepoController.repo.AddBlob(s.Ctx, blob1)
-	s.NoError(errorWhenAddingFirstIconFile)
+	errorWhenAddingFirstBlob := s.RepoController.repo.AddBlob(s.Ctx, blob1)
+	s.NoError(errorWhenAddingFirstBlob)
 
 	firstSha1, errorWhenGettingFirstSha1 := s.RepoController.repo.GetStateID(s.Ctx)
 	s.NoError(errorWhenGettingFirstSha1)
-	errorAddingSecondIconfile := s.RepoController.repo.AddBlob(s.Ctx, blob2)
-	s.NoError(errorAddingSecondIconfile)
+	errorAddingSecondBlob := s.RepoController.repo.AddBlob(s.Ctx, blob2)
+	s.NoError(errorAddingSecondBlob)
 	secondSha1, errorWhenGettingSecondSha1 := s.RepoController.repo.GetStateID(s.Ctx)
 	s.NoError(errorWhenGettingSecondSha1)
 	s.NotEqual(firstSha1, secondSha1)
 }
 
-func (s *BlobstoreTestSuite) TestRemainsConsistentAfterUpdatingIconfileFails() {
+func (s *BlobstoreTestSuite) TestRemainsConsistentAfterUpdatingBlobFails() {
 }
 
-func (s *BlobstoreTestSuite) TestRemainsConsistentAfterDeletingIconfileFails() {
+func (s *BlobstoreTestSuite) TestRemainsConsistentAfterDeletingBlobFails() {
 }
 
 var DefaultBlobstoreController = TestBlobstoreController{
