@@ -22,7 +22,7 @@ export const fetchDrawingList = async (): Promise<string[]> => {
 };
 
 export const fetchDrawing = async (title: string) => {
-	return await axios.get("/api/drawing", { params: { title: plainToBase64(title) } });
+	return await axios.get(`/api/drawing/${plainToBase64(title)}`);
 };
 
 export const saveDrawing = async (title: string, content: string) => {
@@ -31,16 +31,15 @@ export const saveDrawing = async (title: string, content: string) => {
 		title,
 		elements: JSON.parse(content)
 	};
-	await axios.put("/api/drawing", JSON.stringify({ title: plainToBase64(title), content: JSON.stringify(doc) }), { headers: { "Content-Type": "application/json" } });
+	await axios.put(`/api/drawing/${plainToBase64(title)}`, JSON.stringify({ content: JSON.stringify(doc) }), { headers: { "Content-Type": "application/json" } });
 };
 
 export const renameDrawing = async (from: string, to: string): Promise<void> => {
 	console.log(">>>>>> renameDrawing: from: ", from, ", to:", to);
 	const requestConfig: AxiosRequestConfig = {
-		url: "/api/drawing",
+		url: `/api/drawing/${plainToBase64(from)}`,
 		method: "patch",
 		data: JSON.stringify({
-			title: plainToBase64(from),
 			newTitle: plainToBase64(to)
 		}),
 		headers: { "Content-Type": "application/json" }
@@ -52,7 +51,7 @@ export const deleteDrawings = async (titles: string[]): Promise<void> => {
 	console.log(">>>>>>>> deleteDrawings: ", titles.join(", "));
 	for (const title of titles) {
 		console.log(">>>>>>>> deleteDrawing ", title);
-		await axios.delete("/api/drawing/" + plainToBase64(title));
+		await axios.delete(`/api/drawing/${plainToBase64(title)}`);
 	}
 };
 
