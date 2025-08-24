@@ -6,6 +6,7 @@ vars:
     sh: dir -1 ../ | while read d; do test -f ../$d/go.mod && echo $d; done
   GIT_REPOS:
     sh: dir -1 ../ | while read d; do test -d ../$d/.git && echo $d; done
+  WEBAPP_VERSION: ""
 
   DRAWINGS_BUCKET_NAME: '{{ .DRAWINGS_BUCKET_NAME | default "test-xcalidrawings" }}'
 
@@ -24,7 +25,7 @@ tasks:
   setup:
     cmds:
       - |
-        mkdir "{{.WORKSPACE_DIR}}"
+        mkdir -p "{{.WORKSPACE_DIR}}"
         cd "{{.WORKSPACE_DIR}}"
         go work init
         cd -
@@ -38,7 +39,7 @@ tasks:
 
         # dependencies from outside the github org:
         git clone git@github.com:pdkovacs/vcblobstore.git
-        go work use vcblobstore 
+        go work use vcblobstore
   git-all:
     cmds:
       - |
@@ -55,6 +56,12 @@ tasks:
         echo "Top: DRAWINGS_BUCKET_NAME="{{.DRAWINGS_BUCKET_NAME}}
   release-webapp:
     cmds:
+      - |
+        if [ -z "{{.WEBAPP_VERSION}}" ];
+        then
+          echo "The task variable WEBAPP_VERSION must be set"
+          exit 1
+        fi
       - task: webclient:build
       - |
         oses="linux windows darwin"
@@ -69,3 +76,13 @@ tasks:
             task server:with-webclient
           done;
         done;
+        cd ..
+          for d in $(find . -maxdepth 1 -type d);
+          do
+            [ "$d" == "." ] && continue;
+            echo $d;
+            cd $d
+            git tag -a -f "xcaliapp-{{.WEBAPP_VERSION}}"
+            git push -f --tags
+            cd -
+          done
