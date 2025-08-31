@@ -2,20 +2,21 @@ import React from "react";
 import { Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { useEffect, useState } from "react";
-import { AsyncOperationState, saveDrawingContent, selectCurrentDrawingContent, selectSavedDrawing, selectSaveDrawingStatus } from "./drawingSlice";
+import { AsyncOperationState, createDrawing, saveDrawingContent, selectSavedDrawing, selectSaveDrawingStatus } from "./drawingSlice";
 
 import style from "./Drawing.module.css";
 import { useReporters } from "../../utils/use-reporters";
+import { XcalidrawContent } from "./drawingAPI";
 
 interface SaveDrawingDialogProps {
 	readonly open: boolean;
 	readonly onClose: () => void;
+	readonly currentContent: XcalidrawContent;
 }
 
-export const SaveDrawingDialog = ({ open, onClose }: SaveDrawingDialogProps) => {
+export const SaveDrawingDialog = ({ open, onClose, currentContent }: SaveDrawingDialogProps) => {
 
 	const savedDrawing = useAppSelector(selectSavedDrawing);
-	const currentContent = useAppSelector(selectCurrentDrawingContent);
 	const savingStatus = useAppSelector(selectSaveDrawingStatus);
 
 	const [selectedTitle, setSelectedTitle] = useState<string>("");
@@ -31,7 +32,18 @@ export const SaveDrawingDialog = ({ open, onClose }: SaveDrawingDialogProps) => 
 	}, [savingStatus]);
 
 	const handleOk = () => {
-		dispatch(saveDrawingContent({ title: selectedTitle, content: currentContent }));
+		if (selectedTitle === savedDrawing.title) {
+			dispatch(saveDrawingContent({
+				id: savedDrawing.id,
+				title: savedDrawing.title,
+				elements: currentContent
+			}));
+		} else {
+			dispatch(createDrawing({
+				title: selectedTitle,
+				elements: currentContent
+			}));
+		}
 		onClose();
 	};
 

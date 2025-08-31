@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { AsyncOperationState, getDrawingContent, getDrawingList, selectDrawingList, selectDrawingListStatus } from "./drawingSlice";
 
 import style from "./Drawing.module.css";
+import { DrawingListItem } from "./drawingAPI";
+import { isNil } from "lodash";
 
 interface OpenDrawingDialogProps {
 	readonly open: boolean;
@@ -15,7 +17,7 @@ export const OpenDrawingDialog = ({ open, onClose }: OpenDrawingDialogProps) => 
 
 	const drawingListStatus = useAppSelector(selectDrawingListStatus);
 
-	const [titleOfSelectedDrawing, setTitleOfSelectedDrawing] = useState<string>("");
+	const [selectedDrawing, setSelectedDrawing] = useState<DrawingListItem | undefined>(undefined);
 
 	const dispatch = useAppDispatch();
 
@@ -26,7 +28,11 @@ export const OpenDrawingDialog = ({ open, onClose }: OpenDrawingDialogProps) => 
 	}, [open]);
 
 	const handleOk = () => {
-		dispatch(getDrawingContent(titleOfSelectedDrawing));
+		if (isNil(selectedDrawing?.id)) {
+			console.warn("selectedDrawing?.id is nil");
+			return;
+		}
+		dispatch(getDrawingContent(selectedDrawing.id));
 		onClose();
 	};
 
@@ -42,7 +48,7 @@ export const OpenDrawingDialog = ({ open, onClose }: OpenDrawingDialogProps) => 
 						? <CircularProgress />
 						: drawingListStatus === AsyncOperationState.failed
 							? <Alert severity="error">Failed to load drawing list</Alert>
-							: <DrawingSelector selectedDrawing={titleOfSelectedDrawing} onChange={selection => setTitleOfSelectedDrawing(selection)} />
+							: <DrawingSelector selectedDrawing={selectedDrawing} onChange={selection => setSelectedDrawing(selection)} />
 				}</div>
 			</DialogContent>
 			<DialogActions>
@@ -54,24 +60,24 @@ export const OpenDrawingDialog = ({ open, onClose }: OpenDrawingDialogProps) => 
 };
 
 interface DrawingSelectorProps {
-	readonly selectedDrawing: string;
-	readonly onChange: (selectedDrawing: string) => void;
+	readonly selectedDrawing: DrawingListItem | undefined;
+	readonly onChange: (selectedDrawing: DrawingListItem | undefined) => void;
 }
 
 const DrawingSelector = ({ selectedDrawing, onChange }: DrawingSelectorProps) => {
 	const drawingList = useAppSelector(selectDrawingList);
 
-	const selectedTitle = selectedDrawing || drawingList[0] || "";
+	const drawingToShowSelected = selectedDrawing || drawingList[0] || "";
 	useEffect(() => {
-		onChange(selectedTitle);
-	}, [selectedTitle]);
+		onChange(drawingToShowSelected);
+	}, [drawingToShowSelected]);
 	return (
 		<Select className={style.openSaveDrawingDialogContent}
 			label="Drawing"
-			onChange={event => onChange(event.target.value)}
-			value={selectedTitle}
+			onChange={event => onChange(drawingList.find(drawing => drawing.id === event.target.value))}
+			value={drawingToShowSelected.id}
 		>{
-				drawingList.map(drawingTitle => <MenuItem key={drawingTitle} value={drawingTitle}>{drawingTitle}</MenuItem>)
+				drawingList.map(drawing => <MenuItem key={drawing.id} value={drawing.id}>{drawing.title}</MenuItem>)
 			}</Select>
 	);
 };

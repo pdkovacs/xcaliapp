@@ -1,7 +1,6 @@
-import type { PayloadAction } from "@reduxjs/toolkit";
 import { createAppSlice } from "../../app/createAppSlice";
-import type { Drawing } from "./drawingAPI";
-import { fetchDrawing, fetchDrawingList, plainToBase64, saveDrawing } from "./drawingAPI";
+import type { Drawing, DrawingListItem } from "./drawingAPI";
+import { fetchDrawing, fetchDrawingList, createDrawing as createDrawingApi, saveDrawing } from "./drawingAPI";
 
 export enum AsyncOperationState {
 	idle = "idle",
@@ -9,22 +8,12 @@ export enum AsyncOperationState {
 	failed = "failed"
 };
 
-interface SaveDrawingActionPayload {
-	readonly title: string;
-	readonly content: string;
-}
-
-interface RenameDrawingActionPayload {
-	readonly from: string;
-	readonly to: string;
-}
-
 export interface DrawingSliceState {
 	drawingList: {
 		getList: {
 			status: AsyncOperationState;
 		}
-		value: string[];
+		value: DrawingListItem[];
 	};
 	drawingInEdit: {
 		open: {
@@ -34,7 +23,6 @@ export interface DrawingSliceState {
 			status: AsyncOperationState;
 		};
 		savedDrawing: Drawing;
-		currentContent: string;
 	};
 	drawingManagement: {
 		rename: {
@@ -62,10 +50,10 @@ const initialState: DrawingSliceState = {
 			status: AsyncOperationState.idle
 		},
 		savedDrawing: {
+			id: "",
 			title: "",
-			content: ""
-		},
-		currentContent: ""
+			elements: []
+		}
 	},
 	drawingManagement: {
 		rename: {
@@ -102,57 +90,92 @@ export const drawingSlice = createAppSlice({
 			}
 		),
 		getDrawingContent: create.asyncThunk(
-			async (title: string) => {
-				const response = await fetchDrawing(title);
-				const desiredPathname = `/drawings/${plainToBase64(title)}`;
+			async (id: string) => {
+				const response = await fetchDrawing(id);
+				const desiredPathname = `/drawings/${id}`;
 				if (window.location.pathname !== desiredPathname) {
-					window.history.pushState({}, title, desiredPathname);
+					window.history.pushState({}, id, desiredPathname);
 				}
-				// The value we return becomes the `fulfilled` action payload
-				return {
-					title,
-					content: response.data
-				};
+				return response;
 			},
 			{
 				pending: state => {
 					state.drawingInEdit.open.status = AsyncOperationState.inProgress;
 				},
 				fulfilled: (state, action) => {
-					state.drawingInEdit.open.status = AsyncOperationState.idle;
-					state.drawingInEdit.savedDrawing = action.payload;
-					state.drawingInEdit.currentContent = JSON.parse(action.payload.content);
+					return {
+						...state,
+						drawingInEdit: {
+							...state.drawingInEdit,
+							open: {
+								...state.drawingInEdit.open,
+								status: AsyncOperationState.idle
+							},
+							savedDrawing: action.payload,
+							currentElements: action.payload.elements
+						}
+					};
 				},
 				rejected: state => {
 					state.drawingInEdit.open.status = AsyncOperationState.failed;
 				}
 			}
 		),
-		drawingContentChanged: create.reducer((state, action: PayloadAction<string>) => {
-			state.drawingInEdit.currentContent = action.payload;
-		}),
-		saveDrawingContent: create.asyncThunk(
-			async (payload: SaveDrawingActionPayload) => {
-				await saveDrawing(payload.title, payload.content);
+		createDrawing: create.asyncThunk(
+			async (payload: Drawing) => {
+				return await createDrawingApi(payload.title, payload.elements);
 			},
 			{
 				pending: state => {
 					state.drawingInEdit.save.status = AsyncOperationState.inProgress;
 				},
 				fulfilled: (state, action) => {
-					state.drawingInEdit.savedDrawing = action.meta.arg;
-					state.drawingInEdit.save.status = AsyncOperationState.idle;
+					return {
+						...state,
+						drawingInEdit: {
+							...state.drawingInEdit,
+							savedDrawing: {
+								...action.meta.arg,
+								id: action.payload
+							},
+							save: {
+								...state.drawingInEdit.save,
+								status: AsyncOperationState.idle
+							}
+						}
+					};
 				},
 				rejected: state => {
 					state.drawingInEdit.save.status = AsyncOperationState.failed;
 				}
 			}
 		),
-		renameDrawing: create.reducer((state, action: PayloadAction<RenameDrawingActionPayload>) => {
-			if (state.drawingInEdit.savedDrawing.title === action.payload.from) {
-				state.drawingInEdit.savedDrawing.title = action.payload.to;
+		saveDrawingContent: create.asyncThunk(
+			async (payload: Drawing) => {
+				await saveDrawing(payload);
+			},
+			{
+				pending: state => {
+					state.drawingInEdit.save.status = AsyncOperationState.inProgress;
+				},
+				fulfilled: (state, action) => {
+					return {
+						...state,
+						drawingInEdit: {
+							...state.drawingInEdit,
+							savedDrawing: action.meta.arg,
+							save: {
+								...state.drawingInEdit.save,
+								status: AsyncOperationState.idle
+							}
+						}
+					};
+				},
+				rejected: state => {
+					state.drawingInEdit.save.status = AsyncOperationState.failed;
+				}
 			}
-		})
+		)
 	}),
 	// You can define your selectors here. These selectors receive the slice
 	// state as their first argument.
@@ -161,20 +184,17 @@ export const drawingSlice = createAppSlice({
 		selectDrawingListStatus: drawing => drawing.drawingList.getList.status,
 		selectSavedDrawing: drawing => drawing.drawingInEdit.savedDrawing,
 		selectDrawingToEditStatus: drawing => drawing.drawingInEdit.open.status,
-		selectCurrentDrawingContent: drawing => drawing.drawingInEdit.currentContent,
 		selectSaveDrawingStatus: drawing => drawing.drawingInEdit.save.status
 	}
 });
 
-// Action creators are generated for each case reducer function.
-export const { getDrawingList, getDrawingContent, drawingContentChanged, saveDrawingContent } =
+export const { getDrawingList, getDrawingContent, createDrawing, saveDrawingContent } =
 	drawingSlice.actions;
 
-// Selectors returned by `slice.selectors` take the root state as their first argument.
-export const { selectDrawingList,
+export const {
+	selectDrawingList,
 	selectDrawingListStatus,
 	selectSavedDrawing,
 	selectSaveDrawingStatus,
-	selectCurrentDrawingContent,
 	selectDrawingToEditStatus
 } = drawingSlice.selectors;

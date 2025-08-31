@@ -7,7 +7,7 @@ import style from "./ManageDrawingsDialog.module.css";
 import { isEmpty } from "lodash";
 import classNames from "classnames";
 import { ErrorDialog, ErrorDialogData } from "../../utils/ErrorDialog";
-import { deleteDrawings, renameDrawing } from "./drawingAPI";
+import { deleteDrawings, DrawingListItem, fetchDrawing, saveDrawing } from "./drawingAPI";
 
 export interface ManageDrawingsDialogProps {
 	readonly open: boolean
@@ -21,7 +21,7 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 
 	const dispatch = useAppDispatch();
 
-	const [selectedTitles, setSelectedTitles] = useState<string[]>([]);
+	const [selectedDrawings, setSelectedDrawings] = useState<DrawingListItem[]>([]);
 
 	const [renameDrawingDialogOpen, setRenameDrawingDialogOpen] = useState(false);
 	const [deleteDrawingsDialogOpen, setDeleteDrawingsDialogOpen] = useState(false);
@@ -30,17 +30,19 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 	useEffect(() => {
 		if (open) {
 			dispatch(getDrawingList());
+		} else {
+			setSelectedDrawings([]);
 		}
 	}, [open]);
 
 	const enabledActions = useMemo(() => {
-		if (isEmpty(selectedTitles)) {
+		if (isEmpty(selectedDrawings)) {
 			return [];
 		}
-		return selectedTitles.length === 1
+		return selectedDrawings.length === 1
 			? [Action.RENAME, Action.DELETE]
 			: [Action.DELETE];
-	}, [selectedTitles]);
+	}, [selectedDrawings]);
 
 	const handleActionDialogOpen = (selectedAction: Action) => {
 		switch (selectedAction) {
@@ -60,16 +62,19 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 				case Action.RENAME:
 					setRenameDrawingDialogOpen(false);
 					if (confirmed !== false) {
-						await renameDrawing(selectedTitles[0], confirmed as string);
-						setSelectedTitles([]);
+						const id = selectedDrawings[0].id;
+						const newTitle = confirmed as string;
+						const content = await fetchDrawing(id);
+						await saveDrawing({ id, title: newTitle, elements: content.elements });
+						setSelectedDrawings([]);
 						dispatch(getDrawingList());
 					}
 					break;
 				case Action.DELETE:
 					setDeleteDrawingsDialogOpen(false);
 					if (confirmed) {
-						await deleteDrawings(selectedTitles);
-						setSelectedTitles([]);
+						await deleteDrawings(selectedDrawings.map(drawing => drawing.id));
+						setSelectedDrawings([]);
 						dispatch(getDrawingList());
 					}
 					break;
@@ -85,11 +90,11 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 		}
 	};
 
-	const handleTitleSelectionChange = (title: string, checked: boolean) => {
-		if (checked && !selectedTitles.includes(title)) {
-			setSelectedTitles(selectedTitles.concat(title));
+	const handleDrawingSelectionChange = (drawing: DrawingListItem, checked: boolean) => {
+		if (checked && !selectedDrawings.includes(drawing)) {
+			setSelectedDrawings(selectedDrawings.concat(drawing));
 		} else {
-			setSelectedTitles(selectedTitles.filter(selectedTitle => selectedTitle !== title));
+			setSelectedDrawings(selectedDrawings.filter(selectedDrawing => selectedDrawing !== drawing));
 		}
 	};
 
@@ -106,7 +111,7 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 						? <CircularProgress />
 						: drawingListStatus === AsyncOperationState.failed
 							? <Alert severity="error">Failed to load drawing list</Alert>
-							: <ManageDrawingsPanel selectedTitles={selectedTitles} onTitleSelectionChanged={(title, checked) => handleTitleSelectionChange(title, checked)} />
+							: <ManageDrawingsPanel selectedDrawings={selectedDrawings} onDrawingSelectionChanged={(drawing, checked) => handleDrawingSelectionChange(drawing, checked)} />
 				}</div>
 			</DialogContent>
 			<DialogActions>
@@ -114,27 +119,27 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 			</DialogActions>
 		</Dialog>
 
-		<RenameDrawingDialog open={renameDrawingDialogOpen} title={selectedTitles[0] ?? ""} onClose={confirmed => handleActionDialogClosed(Action.RENAME, confirmed)} />
-		<DeleteDrawingsDialog open={deleteDrawingsDialogOpen} titles={selectedTitles} onClose={confirmed => handleActionDialogClosed(Action.DELETE, confirmed)} />
+		<RenameDrawingDialog open={renameDrawingDialogOpen} drawing={selectedDrawings[0] ?? ""} onClose={confirmed => handleActionDialogClosed(Action.RENAME, confirmed)} />
+		<DeleteDrawingsDialog open={deleteDrawingsDialogOpen} drawings={selectedDrawings} onClose={confirmed => handleActionDialogClosed(Action.DELETE, confirmed)} />
 		<ErrorDialog open={actionExecutionError !== null} onClose={() => setActionExecutionError(null)} data={actionExecutionError!} />
 	</>;
 };
 
 interface ManageDrawingsPanelProps {
-	readonly selectedTitles: string[];
-	readonly onTitleSelectionChanged: (title: string, checked: boolean) => void;
+	readonly selectedDrawings: DrawingListItem[];
+	readonly onDrawingSelectionChanged: (drawing: DrawingListItem, checked: boolean) => void;
 }
 
-const ManageDrawingsPanel = ({ selectedTitles, onTitleSelectionChanged }: ManageDrawingsPanelProps) => {
+const ManageDrawingsPanel = ({ selectedDrawings, onDrawingSelectionChanged }: ManageDrawingsPanelProps) => {
 	const drawingList = useAppSelector(selectDrawingList);
 
 	return <div className={style.wideDialogContent + " " + style.overflowingDialogContent}>
 		<div>
 			{
-				drawingList.map(drawingTitle => {
-					return <div className={style.drawingListItem} key={drawingTitle}>
-						<Checkbox checked={selectedTitles.includes(drawingTitle)} onChange={change => onTitleSelectionChanged(drawingTitle, change.target.checked)} />
-						<div>{drawingTitle}</div>
+				drawingList.map(drawing => {
+					return <div className={style.drawingListItem} key={drawing.id}>
+						<Checkbox checked={selectedDrawings.includes(drawing)} onChange={change => onDrawingSelectionChanged(drawing, change.target.checked)} />
+						<div>{drawing.title}</div>
 					</div>;
 				})
 			}
@@ -190,11 +195,11 @@ const ActionsMenu = ({ enabledActions, onActionSelected }: ActionsMenuProps) => 
 
 interface RenameDrawingDialogProps {
 	readonly open: boolean;
-	readonly title: string;
+	readonly drawing: DrawingListItem;
 	readonly onClose: (confirmedRenameTo: string | false) => void;
 }
 
-const RenameDrawingDialog = ({ open, title, onClose }: RenameDrawingDialogProps) => {
+const RenameDrawingDialog = ({ open, drawing, onClose }: RenameDrawingDialogProps) => {
 	const [titleToRenameTo, setTitleToRenameTo] = useState<string | null>(null);
 
 	const handleOnClose = (confirmedRenameTo: string | false) => {
@@ -205,29 +210,29 @@ const RenameDrawingDialog = ({ open, title, onClose }: RenameDrawingDialogProps)
 	return <Dialog open={open} maxWidth="xl">
 		<DialogTitle>Rename drawing</DialogTitle>
 		<DialogContent className={style.wideDialogContent + " " + style.overflowingDialogContent}>
-			<TextField label="New title" size="small" sx={{ width: "100%" }} onChange={event => setTitleToRenameTo(event.target.value)} value={titleToRenameTo ?? title} />
+			<TextField label="New title" size="small" sx={{ width: "100%" }} onChange={event => setTitleToRenameTo(event.target.value)} value={titleToRenameTo ?? drawing.title} />
 		</DialogContent>
 		<DialogActions>
 			<Button onClick={() => handleOnClose(false)}>Cancel</Button>
-			<Button disabled={titleToRenameTo === null || titleToRenameTo === title} onClick={() => handleOnClose(titleToRenameTo!)}>Rename</Button>
+			<Button disabled={titleToRenameTo === null || titleToRenameTo === drawing.title} onClick={() => handleOnClose(titleToRenameTo!)}>Rename</Button>
 		</DialogActions>
 	</Dialog>;
 };
 
 interface DeleteDrawingsDialogProps {
 	readonly open: boolean;
-	readonly titles: string[];
+	readonly drawings: DrawingListItem[];
 	readonly onClose: (conformed: boolean) => void;
 }
 
-const DeleteDrawingsDialog = ({ open, titles, onClose }: DeleteDrawingsDialogProps) => {
+const DeleteDrawingsDialog = ({ open, drawings, onClose }: DeleteDrawingsDialogProps) => {
 	return <Dialog open={open} maxWidth="xl">
 		<DialogTitle>Delete drawings</DialogTitle>
 		<DialogContent className={style.wideDialogContent + " " + style.overflowingDialogContent}>
 			<p>Are you sure to delete the following drawings:</p>
 			<div>
 				{
-					titles.map(title => <div key={title}>{title}</div>)
+					drawings.map(drawing => <div key={drawing.id}>{drawing.title}</div>)
 				}
 			</div>
 		</DialogContent>

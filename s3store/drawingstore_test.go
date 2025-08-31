@@ -3,6 +3,7 @@ package s3store
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"testing"
@@ -44,13 +45,13 @@ func (s *s3StoreTest) TestListDrawings() {
 		s.NoError(errPut)
 	}
 
-	outputTitles, getTitlesErr := s.store.ListDrawingTitles(s.ctx)
+	drawingList, getTitlesErr := s.store.ListDrawings(s.ctx)
 	s.NoError(getTitlesErr)
-	s.Equal(2, len(outputTitles))
+	s.Equal(2, len(drawingList))
 
 	slices.Sort(inputTitles)
-	slices.Sort(outputTitles)
-	s.Equal(inputTitles, outputTitles)
+	slices.Sort(slices.Collect(maps.Values(drawingList)))
+	s.Equal(inputTitles, drawingList)
 }
 
 func (s *s3StoreTest) TestGetDrawing() {

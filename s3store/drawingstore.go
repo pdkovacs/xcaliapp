@@ -73,8 +73,19 @@ func (store *DrawingStore) DeleteDrawing(ctx context.Context, title string, modi
 	return nil
 }
 
-func (store *DrawingStore) ListDrawingTitles(ctx context.Context) ([]string, error) {
-	return listObjectKeys(ctx, store.s3Client, store.bucketName, drawingContentObjectKeyPrefix, true)
+func (store *DrawingStore) ListDrawings(ctx context.Context) (map[string]string, error) {
+	keys, err := listObjectKeys(ctx, store.s3Client, store.bucketName, drawingContentObjectKeyPrefix, true)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list object keys: %w", err)
+	}
+
+	drawingList := map[string]string{}
+
+	for _, key := range keys {
+		drawingList[key] = key
+	}
+
+	return drawingList, nil
 }
 
 func (store *DrawingStore) GetDrawing(ctx context.Context, title string) (string, error) {
