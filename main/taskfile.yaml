@@ -1,5 +1,10 @@
 version: "3"
 
+# Execute this file using something like:
+#
+# task release-webapp WEBAPP_VERSION=0.0.6 VERSION_DESCRIPTION='Stable URLs for drawings'
+#
+
 vars:
   WORKSPACE_DIR: "${HOME}/workspace/xcaliapp"
   GO_MODULES:
@@ -62,10 +67,18 @@ tasks:
           echo "The task variable WEBAPP_VERSION must be set"
           exit 1
         fi
+        if [ -z "{{.VERSION_DESCRIPTION}}" ];
+        then
+          echo "The task variable VERSION_DESCRIPTION must be set"
+          exit 1
+        fi
       - task: webclient:build
       - |
+        RELEASE_TAG="xcaliapp-{{.WEBAPP_VERSION}}"
+
         oses="linux windows darwin"
         arches="amd64 arm64"
+
         for os in $oses;
         do
           for arch in $arches;
@@ -82,7 +95,43 @@ tasks:
             [ "$d" == "." ] && continue;
             echo $d;
             cd $d
-            git tag -a -f "xcaliapp-{{.WEBAPP_VERSION}}"
+            git tag -a -f "$RELEASE_TAG"
             git push -f --tags
             cd -
           done
+
+        MY_TOKEN=$(cat ~/.github-xcaliapp-access)
+        create_release_data='{"tag_name":"{{.WEBAPP_VERSION}}","target_commitish":"main","name":"{{.WEBAPP_VERSION}}","body":"{{.VERSION_DESCRIPTION}}","draft":false,"prerelease":false,"generate_release_notes":false}'
+        echo "$create_release_data" > create-release-data.json
+        curl -L \
+          -X POST \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer $MY_TOKEN" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          https://api.github.com/repos/xcaliapp/main/releases \
+          -d "$create_release_data" | tee create-release-response.json
+
+        # parse "id" as "release_id"
+        release_id=$(cat create-release-response.json | jq '.id')
+
+        server_directory=$(readlink -f ../server)
+        path_to_executable="$server_directory/$executable"
+
+        for os in $oses;
+        do
+          for arch in $arches;
+          do
+            export GOOS=$os
+            export GOARCH=$arch
+            executable="xcaliapp_${GOOS}_${GOARCH}"
+            echo "Uploading $path_to_executable..."
+            curl -L \
+              -X POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $MY_TOKEN" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              -H "Content-Type: application/octet-stream" \
+              "https://uploads.github.com/repos/xcaliapp/main/releases/$release_id/assets?name=$executable" \
+              --data-binary "@${path_to_executable}"
+          done;
+        done;
