@@ -45,12 +45,12 @@ export const createDrawing = async (title: string, elements: XcalidrawContent): 
 		title,
 		elements
 	};
-	const response = await axios.post("/api/drawing", JSON.stringify({ content: JSON.stringify(doc) }), { headers: { "Content-Type": "application/json" } });
+	const response = await axios.post("/api/drawing", JSON.stringify({ content: JSON.stringify(doc, null, "\t") }), { headers: { "Content-Type": "application/json" } });
 	return response.data;
 };
 
 export const saveDrawing = async (drawing: Drawing): Promise<string> => {
-	const response = await axios.put(`/api/drawing/${drawing.id}`, JSON.stringify({ content: JSON.stringify(drawing) }), { headers: { "Content-Type": "application/json" } });
+	const response = await axios.put(`/api/drawing/${drawing.id}`, JSON.stringify({ content: JSON.stringify(drawing, null, "\t") }), { headers: { "Content-Type": "application/json" } });
 	return response.data;
 };
 

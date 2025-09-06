@@ -1,12 +1,12 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { isEmpty, isEqual, isNil } from "lodash";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createTheme, CssBaseline, LinearProgress, ThemeProvider, useColorScheme, useMediaQuery } from "@mui/material";
 import { Excalidraw, MainMenu, THEME } from "@excalidraw/excalidraw";
 import { OpenDrawingDialog } from "./features/drawing/OpenDrawing";
-import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
+import { AppState, type ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { useAppDispatch, useAppSelector } from "./app/hooks";
-import { selectSavedDrawing, selectDrawingToEditStatus, AsyncOperationState, getDrawingContent } from "./features/drawing/drawingSlice";
+import { selectSavedDrawing, selectDrawingToEditStatus, AsyncOperationState, getDrawingContent, clearCanvas } from "./features/drawing/drawingSlice";
 import { SaveDrawingDialog } from "./features/drawing/SaveDrawing";
 
 import "@excalidraw/excalidraw/index.css";
@@ -16,6 +16,8 @@ import { ManageDrawingsDialog } from "./features/drawing/ManageDrawingsDialog";
 import { selectErrors } from "./features/app/appSlice";
 import { useReporters } from "./utils/use-reporters";
 import { XcalidrawContent } from "./features/drawing/drawingAPI";
+import { convertToPlainObject } from "./utils/convert-to-plain-object";
+import { emptyArray } from "./utils/empty-array";
 
 const darkTheme = createTheme({
 	colorSchemes: {
@@ -37,10 +39,11 @@ const App = () => {
 
 	const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null);
 	const excalidrawAPIUnsubscribe = useRef<(() => void) | null>(null);
+	const excalidrawAppStateRef = useRef<AppState | null>(null);
 
 	const currentDrawingStatus = useAppSelector(selectDrawingToEditStatus);
 	const savedDrawing = useAppSelector(selectSavedDrawing);
-	const [currentContent, setCurrentContent] = useState<XcalidrawContent>([]);
+	const [currentContent, setCurrentContent] = useState<XcalidrawContent>(emptyArray);
 	const [openDrawingDialogOpen, setOpenDrawingDialogOpen] = useState(false);
 	const [saveDrawingDialogOpen, setSaveDrawingDialogOpen] = useState(false);
 	const [manageDrawingsDialogOpen, setManageDrawingsDialogOpen] = useState(false);
@@ -58,9 +61,10 @@ const App = () => {
 
 	useEffect(() => {
 		const drawingId = window.location.pathname.substring("/drawings/".length);
-		if (drawingId !== savedDrawing.id) {
-			dispatch(getDrawingContent(drawingId));
+		if (isEmpty(drawingId) || isNil(savedDrawing.id) || drawingId === savedDrawing.id) {
+			return;
 		}
+		dispatch(getDrawingContent(drawingId));
 	}, [window.location]);
 
 	useEffect(() => {
@@ -74,6 +78,7 @@ const App = () => {
 
 				const xcaliAppState = excalidrawAPI.getAppState();
 				setMuiColorScehemeMode(xcaliAppState.theme === THEME.DARK ? "dark" : "light");
+				excalidrawAppStateRef.current = xcaliAppState;
 			});
 		}
 	}, [excalidrawAPI]);
@@ -81,8 +86,8 @@ const App = () => {
 	useEffect(() => {
 		if (excalidrawAPI && savedDrawing?.elements) {
 			const sceneData = {
-				elements: savedDrawing.elements ? savedDrawing.elements : [],
-				appState: {}
+				elements: savedDrawing.elements ? convertToPlainObject(savedDrawing.elements) : emptyArray,
+				appState: excalidrawAppStateRef.current
 			};
 			excalidrawAPI?.updateScene(sceneData);
 		}
@@ -95,8 +100,12 @@ const App = () => {
 
 	const excalidrawElements = useMemo(() => {
 		const hasSavedContent = !isNil(savedDrawing.elements) && !isEmpty(savedDrawing.elements);
-		return hasSavedContent ? savedDrawing.elements : [];
+		return hasSavedContent ? savedDrawing.elements : emptyArray;
 	}, [savedDrawing.elements]);
+
+	const clear = useCallback(() => {
+		dispatch(clearCanvas());
+	}, [dispatch, clearCanvas]);
 
 	return (
 		<ThemeProvider theme={prefersDarkMode ? darkTheme : lightTheme}>
@@ -119,6 +128,9 @@ const App = () => {
 							}}
 						>
 							<MainMenu>
+								<MainMenu.Item onSelect={() => clear()}>
+									New
+								</MainMenu.Item>
 								<MainMenu.Item onSelect={() => setOpenDrawingDialogOpen(true)}>
 									Open
 								</MainMenu.Item>

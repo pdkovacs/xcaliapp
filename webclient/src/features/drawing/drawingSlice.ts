@@ -1,4 +1,6 @@
+import { isEmpty } from "lodash";
 import { createAppSlice } from "../../app/createAppSlice";
+import { emptyArray } from "../../utils/empty-array";
 import type { Drawing, DrawingListItem } from "./drawingAPI";
 import { fetchDrawing, fetchDrawingList, createDrawing as createDrawingApi, saveDrawing } from "./drawingAPI";
 
@@ -6,6 +8,12 @@ export enum AsyncOperationState {
 	idle = "idle",
 	inProgress = "inProgress",
 	failed = "failed"
+};
+
+const emptyDrawing: Drawing = {
+	id: "",
+	title: "",
+	elements: emptyArray
 };
 
 export interface DrawingSliceState {
@@ -39,7 +47,7 @@ const initialState: DrawingSliceState = {
 		getList: {
 			status: AsyncOperationState.idle
 		},
-		value: []
+		value: emptyArray
 	},
 
 	drawingInEdit: {
@@ -49,11 +57,7 @@ const initialState: DrawingSliceState = {
 		save: {
 			status: AsyncOperationState.idle
 		},
-		savedDrawing: {
-			id: "",
-			title: "",
-			elements: []
-		}
+		savedDrawing: emptyDrawing
 	},
 	drawingManagement: {
 		rename: {
@@ -65,6 +69,24 @@ const initialState: DrawingSliceState = {
 	}
 };
 
+interface LocationParams {
+	readonly drawingId?: string;
+}
+
+const setLocation = (locationParams: LocationParams) => {
+	if (!isEmpty(locationParams.drawingId)) {
+		const drawingId = locationParams.drawingId!;
+		const desiredPathname = `/drawings/${drawingId}`;
+		if (window.location.pathname !== desiredPathname) {
+			window.history.pushState({}, drawingId, desiredPathname);
+		}
+	} else {
+		if (window.location.pathname !== "") {
+			window.history.pushState({}, "", "/");
+		}
+	}
+};
+
 // If you are not using async thunks you can use the standalone `createSlice`.
 export const drawingSlice = createAppSlice({
 	name: "drawing",
@@ -72,9 +94,7 @@ export const drawingSlice = createAppSlice({
 	reducers: create => ({
 		getDrawingList: create.asyncThunk(
 			async () => {
-				const response = await fetchDrawingList();
-				// The value we return becomes the `fulfilled` action payload
-				return response;
+				return await fetchDrawingList();
 			},
 			{
 				pending: state => {
@@ -92,10 +112,7 @@ export const drawingSlice = createAppSlice({
 		getDrawingContent: create.asyncThunk(
 			async (id: string) => {
 				const response = await fetchDrawing(id);
-				const desiredPathname = `/drawings/${id}`;
-				if (window.location.pathname !== desiredPathname) {
-					window.history.pushState({}, id, desiredPathname);
-				}
+				setLocation({ drawingId: id });
 				return response;
 			},
 			{
@@ -111,7 +128,10 @@ export const drawingSlice = createAppSlice({
 								...state.drawingInEdit.open,
 								status: AsyncOperationState.idle
 							},
-							savedDrawing: action.payload,
+							savedDrawing: {
+								...action.payload,
+								id: action.meta.arg
+							},
 							currentElements: action.payload.elements
 						}
 					};
@@ -121,9 +141,29 @@ export const drawingSlice = createAppSlice({
 				}
 			}
 		),
+		clearCanvas: create.preparedReducer(() => {
+			setLocation({});
+			// if (window.location.pathname !== "") {
+			// 	window.history.pushState({}, "", "/");
+			// }
+			return {
+				payload: undefined
+			};
+		}, state => {
+			return {
+				...state,
+				drawingInEdit: {
+					...state.drawingInEdit,
+					savedDrawing: emptyDrawing,
+					currentElements: emptyArray
+				}
+			};
+		}),
 		createDrawing: create.asyncThunk(
 			async (payload: Drawing) => {
-				return await createDrawingApi(payload.title, payload.elements);
+				const drawingId = await createDrawingApi(payload.title, payload.elements);
+				setLocation({ drawingId });
+				return drawingId;
 			},
 			{
 				pending: state => {
@@ -188,7 +228,7 @@ export const drawingSlice = createAppSlice({
 	}
 });
 
-export const { getDrawingList, getDrawingContent, createDrawing, saveDrawingContent } =
+export const { getDrawingList, getDrawingContent, clearCanvas, createDrawing, saveDrawingContent } =
 	drawingSlice.actions;
 
 export const {

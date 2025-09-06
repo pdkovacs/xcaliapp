@@ -8,6 +8,7 @@ import { isEmpty } from "lodash";
 import classNames from "classnames";
 import { ErrorDialog, ErrorDialogData } from "../../utils/ErrorDialog";
 import { deleteDrawings, DrawingListItem, fetchDrawing, saveDrawing } from "./drawingAPI";
+import { emptyArray } from "../../utils/empty-array";
 
 export interface ManageDrawingsDialogProps {
 	readonly open: boolean
@@ -21,7 +22,7 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 
 	const dispatch = useAppDispatch();
 
-	const [selectedDrawings, setSelectedDrawings] = useState<DrawingListItem[]>([]);
+	const [selectedDrawings, setSelectedDrawings] = useState<DrawingListItem[]>(emptyArray);
 
 	const [renameDrawingDialogOpen, setRenameDrawingDialogOpen] = useState(false);
 	const [deleteDrawingsDialogOpen, setDeleteDrawingsDialogOpen] = useState(false);
@@ -31,13 +32,13 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 		if (open) {
 			dispatch(getDrawingList());
 		} else {
-			setSelectedDrawings([]);
+			setSelectedDrawings(emptyArray);
 		}
 	}, [open]);
 
 	const enabledActions = useMemo(() => {
 		if (isEmpty(selectedDrawings)) {
-			return [];
+			return emptyArray;
 		}
 		return selectedDrawings.length === 1
 			? [Action.RENAME, Action.DELETE]
@@ -66,7 +67,7 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 						const newTitle = confirmed as string;
 						const content = await fetchDrawing(id);
 						await saveDrawing({ id, title: newTitle, elements: content.elements });
-						setSelectedDrawings([]);
+						setSelectedDrawings(emptyArray);
 						dispatch(getDrawingList());
 					}
 					break;
@@ -74,7 +75,7 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 					setDeleteDrawingsDialogOpen(false);
 					if (confirmed) {
 						await deleteDrawings(selectedDrawings.map(drawing => drawing.id));
-						setSelectedDrawings([]);
+						setSelectedDrawings(emptyArray);
 						dispatch(getDrawingList());
 					}
 					break;
