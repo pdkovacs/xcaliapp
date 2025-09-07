@@ -1,13 +1,20 @@
 .openSaveDrawingDialogContent {
-  width: 500px;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+	width: 500px;
+	height: 150px;
+	display: flex;
+	flex-direction: column;
+	align-items: start;
+	justify-content: center;
+	gap: 20px;
+
+	.selectRepo,
+	.selectDrawing {
+		width: 100%;
+	}
 }
 
 .fetchInProgress {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }

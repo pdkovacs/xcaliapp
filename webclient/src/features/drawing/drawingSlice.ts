@@ -1,7 +1,7 @@
 import { isEmpty } from "lodash";
 import { createAppSlice } from "../../app/createAppSlice";
 import { emptyArray } from "../../utils/empty-array";
-import type { Drawing, DrawingListItem } from "./drawingAPI";
+import type { Drawing, DrawingLists, DrawingRepoRef } from "./drawingAPI";
 import { fetchDrawing, fetchDrawingList, createDrawing as createDrawingApi, saveDrawing } from "./drawingAPI";
 
 export enum AsyncOperationState {
@@ -17,11 +17,11 @@ const emptyDrawing: Drawing = {
 };
 
 export interface DrawingSliceState {
-	drawingList: {
+	drawingLists: {
 		getList: {
 			status: AsyncOperationState;
 		}
-		value: DrawingListItem[];
+		value: DrawingLists;
 	};
 	drawingInEdit: {
 		open: {
@@ -43,11 +43,11 @@ export interface DrawingSliceState {
 }
 
 const initialState: DrawingSliceState = {
-	drawingList: {
+	drawingLists: {
 		getList: {
 			status: AsyncOperationState.idle
 		},
-		value: emptyArray
+		value: {}
 	},
 
 	drawingInEdit: {
@@ -92,20 +92,20 @@ export const drawingSlice = createAppSlice({
 	name: "drawing",
 	initialState,
 	reducers: create => ({
-		getDrawingList: create.asyncThunk(
+		getDrawingLists: create.asyncThunk(
 			async () => {
 				return await fetchDrawingList();
 			},
 			{
 				pending: state => {
-					state.drawingList.getList.status = AsyncOperationState.inProgress;
+					state.drawingLists.getList.status = AsyncOperationState.inProgress;
 				},
 				fulfilled: (state, action) => {
-					state.drawingList.getList.status = AsyncOperationState.idle;
-					state.drawingList.value = action.payload;
+					state.drawingLists.getList.status = AsyncOperationState.idle;
+					state.drawingLists.value = action.payload;
 				},
 				rejected: state => {
-					state.drawingList.getList.status = AsyncOperationState.failed;
+					state.drawingLists.getList.status = AsyncOperationState.failed;
 				}
 			}
 		),
@@ -220,19 +220,25 @@ export const drawingSlice = createAppSlice({
 	// You can define your selectors here. These selectors receive the slice
 	// state as their first argument.
 	selectors: {
-		selectDrawingList: drawing => drawing.drawingList.value,
-		selectDrawingListStatus: drawing => drawing.drawingList.getList.status,
+		selectDrawingRepos: drawing => {
+			const drawingLists = drawing.drawingLists.value;
+			const repos: DrawingRepoRef[] = Object.keys(drawingLists).map(repoName => drawingLists[repoName].repoRef);
+			return repos;
+		},
+		selectDrawingLists: drawing => drawing.drawingLists.value,
+		selectDrawingListStatus: drawing => drawing.drawingLists.getList.status,
 		selectSavedDrawing: drawing => drawing.drawingInEdit.savedDrawing,
 		selectDrawingToEditStatus: drawing => drawing.drawingInEdit.open.status,
 		selectSaveDrawingStatus: drawing => drawing.drawingInEdit.save.status
 	}
 });
 
-export const { getDrawingList, getDrawingContent, clearCanvas, createDrawing, saveDrawingContent } =
+export const { getDrawingLists, getDrawingContent, clearCanvas, createDrawing, saveDrawingContent } =
 	drawingSlice.actions;
 
 export const {
-	selectDrawingList,
+	selectDrawingRepos,
+	selectDrawingLists,
 	selectDrawingListStatus,
 	selectSavedDrawing,
 	selectSaveDrawingStatus,

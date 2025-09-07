@@ -9,29 +9,31 @@ export type XcalidrawDocument = Readonly<{
 	type?: string;
 }>;
 
-export interface Drawing extends XcalidrawDocument {
-	readonly id?: string;
+export interface DrawingRepoRef {
+	readonly name: string;
+	readonly label: string;
 }
 
-export interface DrawingListItem {
+export interface Drawing extends XcalidrawDocument {
+	readonly id?: string;
+	readonly repo?: DrawingRepoRef;
+}
+
+export interface DrawingRepoItem {
 	readonly id: string;
 	readonly title: string;
 }
 
-export const fetchDrawingList = async (): Promise<DrawingListItem[]> => {
+export type DrawingRepo = Readonly<{
+	repoRef: DrawingRepoRef;
+	items: DrawingRepoItem[];
+}>;
+export type DrawingLists = Record<string /*DrawingRepoName*/, DrawingRepo>;
+
+export const fetchDrawingList = async (): Promise<DrawingLists> => {
 	const response = await axios.get("/api/drawings");
-	const drawingIdToTitleMap: Record<string, string> = response.data;
-	return Object.keys(drawingIdToTitleMap).reduce<DrawingListItem[]>(
-		(acc, curr) => {
-			const listItem: DrawingListItem = {
-				id: curr,
-				title: drawingIdToTitleMap[curr]
-			};
-			acc.push(listItem);
-			return acc;
-		},
-		[]
-	);
+	const drawingRepoNameToDrawingRepoContent: DrawingLists = response.data;
+	return drawingRepoNameToDrawingRepoContent;
 };
 
 export const fetchDrawing = async (id: string): Promise<Drawing> => {

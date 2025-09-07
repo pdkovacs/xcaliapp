@@ -5,46 +5,65 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"path"
 	"vcblobstore"
 	"vcblobstore/git/local"
 
 	"github.com/rs/zerolog"
 )
 
-type LocalGitStore struct {
-	repo *local.Git
+type LocalGitRepo struct {
+	blobStore      *local.Git
+	pathToDrawings string
 }
 
-func (store *LocalGitStore) PutDrawing(ctx context.Context, key string, contentReader io.Reader, modifiedBy string) error {
+func (repo *LocalGitRepo) drawingIdToRepoPath(drawingId string) string {
+	return path.Join(repo.pathToDrawings, drawingId)
+}
+
+func (repo *LocalGitRepo) PutDrawing(ctx context.Context, drawingId string, contentReader io.Reader, modifiedBy string) error {
 	content, readErr := io.ReadAll(contentReader)
 	if readErr != nil {
-		return fmt.Errorf("failed to read content for %s: %w", key, readErr)
+		return fmt.Errorf("failed to read content for %s: %w", drawingId, readErr)
 	}
 	blobInfo := vcblobstore.BlobInfo{
-		Key:        key,
+		Key:        repo.drawingIdToRepoPath(drawingId),
 		Content:    content,
 		ModifiedBy: modifiedBy,
 	}
-	return store.repo.AddBlob(ctx, blobInfo)
+	return repo.blobStore.AddBlob(ctx, blobInfo)
 }
 
-func (store *LocalGitStore) CopyDrawing(ctx context.Context, sourcekey string, destinationkey string, modifiedBy string) error {
-	return store.repo.CopyBlob(ctx, sourcekey, destinationkey, modifiedBy)
+func (repo *LocalGitRepo) CopyDrawing(ctx context.Context, sourceDrawingId string, destinationDrawingId string, modifiedBy string) error {
+	return repo.blobStore.CopyBlob(ctx, repo.drawingIdToRepoPath(sourceDrawingId), repo.drawingIdToRepoPath(destinationDrawingId), modifiedBy)
 }
 
-func (store *LocalGitStore) DeleteDrawing(ctx context.Context, title string, modifiedBy string) error {
-	return store.repo.DeleteBlob(ctx, title, modifiedBy)
+func (repo *LocalGitRepo) DeleteDrawing(ctx context.Context, drawingId string, modifiedBy string) error {
+	return repo.blobStore.DeleteBlob(ctx, repo.drawingIdToRepoPath(drawingId), modifiedBy)
 }
 
-func (store *LocalGitStore) ListDrawings(ctx context.Context) (map[string]string, error) {
-	keys, err := store.repo.ListBlobKeys(ctx)
+func (repo *LocalGitRepo) ListDrawings(ctx context.Context) (map[string]string, error) {
+	keys, err := repo.blobStore.ListBlobKeys(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	drawingList := map[string]string{}
 	for _, key := range keys {
-		content, err := store.GetDrawing(ctx, key)
+		if len(key) < len(repo.pathToDrawings)+1 { //|| key[0:len(repo.pathToDrawings)] != repo.pathToDrawings {
+			continue
+		}
+
+		if repo.pathToDrawings != "/" && key[0:len(repo.pathToDrawings)] != repo.pathToDrawings {
+			continue
+		}
+
+		fnameStart := len(repo.pathToDrawings) + 1
+		if repo.pathToDrawings == "/" {
+			fnameStart = 0
+		}
+		peeledBackKey := key[fnameStart:]
+		content, err := repo.GetDrawing(ctx, string(peeledBackKey))
 		if err != nil {
 			return nil, fmt.Errorf("failed to get drawing %s: %w", key, err)
 		}
@@ -63,23 +82,24 @@ func (store *LocalGitStore) ListDrawings(ctx context.Context) (map[string]string
 		if !cast {
 			return nil, fmt.Errorf("title of %s is not a string: '%T'", key, titleAny)
 		}
-		drawingList[key] = title
+
+		drawingList[key[fnameStart:]] = title
 	}
 
 	return drawingList, nil
 }
 
-func (store *LocalGitStore) GetDrawing(ctx context.Context, key string) (string, error) {
-	blob, err := store.repo.GetBlob(ctx, key)
+func (repo *LocalGitRepo) GetDrawing(ctx context.Context, drawingId string) (string, error) {
+	blob, err := repo.blobStore.GetBlob(ctx, repo.drawingIdToRepoPath(drawingId))
 	if err != nil {
-		return "", fmt.Errorf("failed to read drawing %s: %w", key, err)
+		return "", fmt.Errorf("failed to read drawing %s: %w", drawingId, err)
 	}
 	return string(blob), nil
 }
 
-func NewLocalGitStore(pathToRepo string, logger *zerolog.Logger) (*LocalGitStore, error) {
+func NewLocalGitStore(pathToStore string, pathToDrawings string, logger *zerolog.Logger) (*LocalGitRepo, error) {
 	config := local.Config{
-		Location: pathToRepo,
+		Location: pathToStore,
 	}
 
 	repo := local.NewLocalGitRepository(&config, logger)
@@ -87,7 +107,8 @@ func NewLocalGitStore(pathToRepo string, logger *zerolog.Logger) (*LocalGitStore
 		return nil, fmt.Errorf("failed to make sure an initialized repository exists: %w", createErr)
 	}
 
-	return &LocalGitStore{
-		repo: repo,
+	return &LocalGitRepo{
+		blobStore:      repo,
+		pathToDrawings: pathToDrawings,
 	}, nil
 }

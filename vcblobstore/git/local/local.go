@@ -401,9 +401,9 @@ func (repo Git) initMaybe() error {
 }
 
 func (repo *Git) pathToFile(key string) (string, error) {
-	if strings.Contains(key, "/") {
-		return "", fmt.Errorf("invalid character in key: forward slash ('/')")
-	}
+	// if strings.Contains(key, "/") {
+	// 	return "", fmt.Errorf("invalid character in key: forward slash ('/')")
+	// }
 	return filepath.Join(repo.location, key), nil
 }
 

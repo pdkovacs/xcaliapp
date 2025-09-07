@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, Menu, MenuItem, TextField } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
-import { AsyncOperationState, getDrawingList, selectDrawingList, selectDrawingListStatus } from "./drawingSlice";
+import { AsyncOperationState, getDrawingLists, selectDrawingLists, selectDrawingListStatus } from "./drawingSlice";
 
 import style from "./ManageDrawingsDialog.module.css";
 import { isEmpty } from "lodash";
 import classNames from "classnames";
 import { ErrorDialog, ErrorDialogData } from "../../utils/ErrorDialog";
-import { deleteDrawings, DrawingListItem, fetchDrawing, saveDrawing } from "./drawingAPI";
+import { deleteDrawings, DrawingRepoItem, fetchDrawing, saveDrawing } from "./drawingAPI";
 import { emptyArray } from "../../utils/empty-array";
 
 export interface ManageDrawingsDialogProps {
@@ -22,7 +22,7 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 
 	const dispatch = useAppDispatch();
 
-	const [selectedDrawings, setSelectedDrawings] = useState<DrawingListItem[]>(emptyArray);
+	const [selectedDrawings, setSelectedDrawings] = useState<DrawingRepoItem[]>(emptyArray);
 
 	const [renameDrawingDialogOpen, setRenameDrawingDialogOpen] = useState(false);
 	const [deleteDrawingsDialogOpen, setDeleteDrawingsDialogOpen] = useState(false);
@@ -30,7 +30,7 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 
 	useEffect(() => {
 		if (open) {
-			dispatch(getDrawingList());
+			dispatch(getDrawingLists());
 		} else {
 			setSelectedDrawings(emptyArray);
 		}
@@ -68,7 +68,7 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 						const content = await fetchDrawing(id);
 						await saveDrawing({ id, title: newTitle, elements: content.elements });
 						setSelectedDrawings(emptyArray);
-						dispatch(getDrawingList());
+						dispatch(getDrawingLists());
 					}
 					break;
 				case Action.DELETE:
@@ -76,7 +76,7 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 					if (confirmed) {
 						await deleteDrawings(selectedDrawings.map(drawing => drawing.id));
 						setSelectedDrawings(emptyArray);
-						dispatch(getDrawingList());
+						dispatch(getDrawingLists());
 					}
 					break;
 			}
@@ -91,7 +91,7 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 		}
 	};
 
-	const handleDrawingSelectionChange = (drawing: DrawingListItem, checked: boolean) => {
+	const handleDrawingSelectionChange = (drawing: DrawingRepoItem, checked: boolean) => {
 		if (checked && !selectedDrawings.includes(drawing)) {
 			setSelectedDrawings(selectedDrawings.concat(drawing));
 		} else {
@@ -127,17 +127,18 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 };
 
 interface ManageDrawingsPanelProps {
-	readonly selectedDrawings: DrawingListItem[];
-	readonly onDrawingSelectionChanged: (drawing: DrawingListItem, checked: boolean) => void;
+	readonly selectedDrawings: DrawingRepoItem[];
+	readonly onDrawingSelectionChanged: (drawing: DrawingRepoItem, checked: boolean) => void;
 }
 
 const ManageDrawingsPanel = ({ selectedDrawings, onDrawingSelectionChanged }: ManageDrawingsPanelProps) => {
-	const drawingList = useAppSelector(selectDrawingList);
+	const drawingLists = useAppSelector(selectDrawingLists);
 
 	return <div className={style.wideDialogContent + " " + style.overflowingDialogContent}>
 		<div>
 			{
-				drawingList.map(drawing => {
+				// TODO: use selected repo
+				drawingLists["adsf"].items.map(drawing => {
 					return <div className={style.drawingListItem} key={drawing.id}>
 						<Checkbox checked={selectedDrawings.includes(drawing)} onChange={change => onDrawingSelectionChanged(drawing, change.target.checked)} />
 						<div>{drawing.title}</div>
@@ -196,7 +197,7 @@ const ActionsMenu = ({ enabledActions, onActionSelected }: ActionsMenuProps) => 
 
 interface RenameDrawingDialogProps {
 	readonly open: boolean;
-	readonly drawing: DrawingListItem;
+	readonly drawing: DrawingRepoItem;
 	readonly onClose: (confirmedRenameTo: string | false) => void;
 }
 
@@ -222,7 +223,7 @@ const RenameDrawingDialog = ({ open, drawing, onClose }: RenameDrawingDialogProp
 
 interface DeleteDrawingsDialogProps {
 	readonly open: boolean;
-	readonly drawings: DrawingListItem[];
+	readonly drawings: DrawingRepoItem[];
 	readonly onClose: (conformed: boolean) => void;
 }
 
