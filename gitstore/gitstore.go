@@ -15,6 +15,7 @@ import (
 type LocalGitRepo struct {
 	blobStore      *local.Git
 	pathToDrawings string
+	logger         *zerolog.Logger
 }
 
 func (repo *LocalGitRepo) drawingIdToRepoPath(drawingId string) string {
@@ -43,7 +44,12 @@ func (repo *LocalGitRepo) DeleteDrawing(ctx context.Context, drawingId string, m
 }
 
 func (repo *LocalGitRepo) ListDrawings(ctx context.Context) (map[string]string, error) {
+	logger := repo.logger.With().Str("method", "ListDrawings").Logger()
+
 	keys, err := repo.blobStore.ListBlobKeys(ctx)
+
+	logger.Debug().Interface("keys", keys).Msg("blobstore returned")
+
 	if err != nil {
 		return nil, err
 	}
@@ -107,8 +113,11 @@ func NewLocalGitStore(pathToStore string, pathToDrawings string, logger *zerolog
 		return nil, fmt.Errorf("failed to make sure an initialized repository exists: %w", createErr)
 	}
 
+	gitstoreLogger := logger.With().Str("module", "gitstore").Logger()
+
 	return &LocalGitRepo{
 		blobStore:      repo,
 		pathToDrawings: pathToDrawings,
+		logger:         &gitstoreLogger,
 	}, nil
 }

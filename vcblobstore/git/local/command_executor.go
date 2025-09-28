@@ -56,6 +56,8 @@ func ExecuteCommand(params ExecCmdParams, logger *zerolog.Logger) (string, error
 
 	err := cmd.Wait()
 	if err != nil {
+		logger.Error().Msgf("slurpErr: %s", string(slurpErr))
+		logger.Info().Msgf("slurpOut: %s", string(slurpOut))
 		errMsg := slurpErr
 		if len(errMsg) == 0 {
 			errMsg = slurpOut

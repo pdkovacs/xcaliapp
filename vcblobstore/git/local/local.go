@@ -313,8 +313,21 @@ func (repo Git) ListBlobKeys(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 
+	logger := repo.logger.With().Str("method", "git: ListBlobKeys").Logger()
+	logger.Debug().Str("gitExecutionOutput", output).Send()
+
 	fileList := []string{}
-	outputLines := strings.Split(output, config.LineBreak)
+	outputLinesDefault := strings.Split(output, "\n")
+	outputLines := outputLinesDefault
+
+	// Windows native (except in git-bash et al.)
+	outputLinesWithPlatformLineBreak := strings.Split(output, config.LineBreak)
+	// Let the more selective win
+	if len(outputLinesWithPlatformLineBreak) >= len(outputLinesDefault) {
+		outputLines = outputLinesWithPlatformLineBreak
+	}
+	logger.Debug().Int("len(outputLinesWithPlatformLineBreak)", len(outputLinesWithPlatformLineBreak)).Int("len(outputLinesDefault)", len(outputLinesDefault)).Send()
+
 	for _, line := range outputLines {
 		trimmedLine := strings.TrimSpace(line)
 		if len(trimmedLine) > 0 {
@@ -432,9 +445,12 @@ type Config struct {
 }
 
 func NewLocalGitRepository(localConfig *Config, logger *zerolog.Logger) *Git {
+
+	localGitLogger := logger.With().Str("module", "local-git").Logger()
+
 	git := Git{
 		location: localConfig.Location,
-		logger:   logger,
+		logger:   &localGitLogger,
 	}
 	return &git
 }
