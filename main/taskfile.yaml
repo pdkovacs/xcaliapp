@@ -9,8 +9,8 @@ vars:
   WORKSPACE_DIR: "${HOME}/workspace/xcaliapp"
   GO_MODULES:
     sh: dir -1 ../ | while read d; do test -f ../$d/go.mod && echo $d; done
-  GIT_REPOS:
-    sh: dir -1 ../ | while read d; do test -d ../$d/.git && echo $d; done
+  GIT_REPOS: gitstore lambda s3store server vcblobstore webclient main
+    
   WEBAPP_VERSION: ""
 
   DRAWINGS_BUCKET_NAME: '{{ .DRAWINGS_BUCKET_NAME | default "test-xcalidrawings" }}'
@@ -34,7 +34,8 @@ tasks:
         cd "{{.WORKSPACE_DIR}}"
         go work init
         cd -
-        echo '{{.GIT_REPOS}}' | while read mod; do
+        for mod in $(echo '{{.GIT_REPOS}}');
+        do
           cd "{{.WORKSPACE_DIR}}"
             git clone git@github.com:xcaliapp/$mod.git
             test -f $mod/go.mod && go work use $mod
@@ -49,12 +50,13 @@ tasks:
     cmds:
       - |
         cd "{{.WORKSPACE_DIR}}/main"
-        while read mod; do
-        echo "mod: $mod"
+        for mod in $(echo '{{.GIT_REPOS}}');
+        do
+          echo "mod: $mod"
           cd ../$mod
           lazygit
           cd -
-        done < <(echo '{{.GIT_REPOS}}')
+        done
   debug:
     cmds:
       - |
