@@ -6,7 +6,7 @@ import { Excalidraw, MainMenu, THEME } from "@excalidraw/excalidraw";
 import { OpenDrawingDialog } from "./features/drawing/OpenDrawing";
 import { AppState, type ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { useAppDispatch, useAppSelector } from "./app/hooks";
-import { selectSavedDrawing, selectDrawingToEditStatus, AsyncOperationState, getDrawingContent, clearCanvas } from "./features/drawing/drawingSlice";
+import { selectSavedDrawing, selectDrawingToEditStatus, AsyncOperationState, getDrawingContent, clearCanvas, selectDrawingRepos, getDrawingRepositories } from "./features/drawing/drawingSlice";
 import { SaveDrawingDialog } from "./features/drawing/SaveDrawing";
 
 import "@excalidraw/excalidraw/index.css";
@@ -35,6 +35,8 @@ const App = () => {
 
 	const prefersDarkMode = useMediaQuery("(prefers-color-scheme: dark)");
 
+	const drawingRepositories = useAppSelector(selectDrawingRepos);
+
 	const { setMode: setMuiColorScehemeMode } = useColorScheme();
 
 	const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null);
@@ -54,6 +56,10 @@ const App = () => {
 	const dispatch = useAppDispatch();
 
 	useEffect(() => {
+		dispatch(getDrawingRepositories());
+	}, []);
+
+	useEffect(() => {
 		if (!isEmpty(appErrors)) {
 			reportError(appErrors[0]);
 		}
@@ -61,11 +67,12 @@ const App = () => {
 
 	useEffect(() => {
 		const drawingId = window.location.pathname.substring("/drawings/".length);
-		if (isEmpty(drawingId) || isNil(savedDrawing.id) || drawingId === savedDrawing.id) {
+		if (isEmpty(drawingRepositories) || isEmpty(drawingId) || isNil(savedDrawing.id) || drawingId === savedDrawing.id) {
 			return;
 		}
-		dispatch(getDrawingContent(drawingId));
-	}, [window.location]);
+		const idParts = drawingId.split("-");
+		dispatch(getDrawingContent({ repoId: idParts[0], drawingId: idParts[1] }));
+	}, [drawingRepositories, window.location]);
 
 	useEffect(() => {
 		if (excalidrawAPI) {
@@ -83,6 +90,8 @@ const App = () => {
 		}
 	}, [excalidrawAPI]);
 
+	const fullTitle = useMemo(() => `${savedDrawing.repo?.label}: ${savedDrawing.title}`, [savedDrawing]);
+
 	useEffect(() => {
 		if (excalidrawAPI && savedDrawing?.elements) {
 			const sceneData = {
@@ -91,7 +100,7 @@ const App = () => {
 			};
 			excalidrawAPI?.updateScene(sceneData);
 		}
-		document.title = savedDrawing.title;
+		document.title = fullTitle;
 	}, [savedDrawing?.elements]);
 
 	const contentHasChanged = useMemo(() => {
@@ -112,7 +121,7 @@ const App = () => {
 			<CssBaseline />
 
 			<div>
-				<div className="document-title">{savedDrawing.title}</div>
+				<div className="document-title">{fullTitle}</div>
 				<div>
 					{
 						currentDrawingStatus === AsyncOperationState.inProgress && <LinearProgress sx={{ marginTop: "-4px" }} />

@@ -30,6 +30,12 @@ export type DrawingRepo = Readonly<{
 }>;
 export type DrawingLists = Record<string /*DrawingRepoName*/, DrawingRepo>;
 
+export const fetchDrawingRepositories = async (): Promise<DrawingRepoRef[]> => {
+	const response = await axios.get("/api/drawingRepositories");
+	const drawingRepos: DrawingRepoRef[] = response.data;
+	return drawingRepos;
+};
+
 export const fetchDrawingList = async (): Promise<DrawingLists> => {
 	const response = await axios.get("/api/drawings");
 	const drawingRepoNameToDrawingRepoContent: DrawingLists = response.data;

@@ -1,8 +1,8 @@
-import { isEmpty } from "lodash";
+import { isNil } from "lodash";
 import { createAppSlice } from "../../app/createAppSlice";
 import { emptyArray } from "../../utils/empty-array";
 import type { Drawing, DrawingLists, DrawingRepoRef } from "./drawingAPI";
-import { fetchDrawing, fetchDrawingList, createDrawing as createDrawingApi, saveDrawing } from "./drawingAPI";
+import { fetchDrawing, fetchDrawingList, createDrawing as createDrawingApi, saveDrawing, fetchDrawingRepositories } from "./drawingAPI";
 
 export enum AsyncOperationState {
 	idle = "idle",
@@ -16,7 +16,20 @@ const emptyDrawing: Drawing = {
 	elements: emptyArray
 };
 
+interface FQDrawingId {
+	readonly repoId: string;
+	readonly drawingId: string;
+}
+
+const fqDrawingIdToString = (fqDrawingId: FQDrawingId): string => `${fqDrawingId.repoId}-${fqDrawingId.drawingId}`;
+
 export interface DrawingSliceState {
+	drawingRepos: {
+		getRepos: {
+			status: AsyncOperationState;
+		},
+		value: DrawingRepoRef[]
+	},
 	drawingLists: {
 		getList: {
 			status: AsyncOperationState;
@@ -43,6 +56,12 @@ export interface DrawingSliceState {
 }
 
 const initialState: DrawingSliceState = {
+	drawingRepos: {
+		getRepos: {
+			status: AsyncOperationState.idle
+		},
+		value: []
+	},
 	drawingLists: {
 		getList: {
 			status: AsyncOperationState.idle
@@ -69,13 +88,9 @@ const initialState: DrawingSliceState = {
 	}
 };
 
-interface LocationParams {
-	readonly drawingId?: string;
-}
-
-const setLocation = (locationParams: LocationParams) => {
-	if (!isEmpty(locationParams.drawingId)) {
-		const drawingId = locationParams.drawingId!;
+const setLocation = (fQDrawingId: FQDrawingId | null) => {
+	if (!isNil(fQDrawingId)) {
+		const drawingId = fqDrawingIdToString(fQDrawingId);
 		const desiredPathname = `/drawings/${drawingId}`;
 		if (window.location.pathname !== desiredPathname) {
 			window.history.pushState({}, drawingId, desiredPathname);
@@ -92,6 +107,24 @@ export const drawingSlice = createAppSlice({
 	name: "drawing",
 	initialState,
 	reducers: create => ({
+		getDrawingRepositories: create.asyncThunk(
+			async () => {
+				return await fetchDrawingRepositories();
+			},
+			{
+				pending: state => {
+					state.drawingRepos.getRepos.status = AsyncOperationState.inProgress;
+				},
+				fulfilled: (state, action) => {
+					state.drawingRepos.getRepos.status = AsyncOperationState.idle;
+					state.drawingRepos.value = action.payload;
+				},
+				rejected: state => {
+					state.drawingRepos.getRepos.status = AsyncOperationState.failed;
+				}
+			}
+
+		),
 		getDrawingLists: create.asyncThunk(
 			async () => {
 				return await fetchDrawingList();
@@ -110,9 +143,9 @@ export const drawingSlice = createAppSlice({
 			}
 		),
 		getDrawingContent: create.asyncThunk(
-			async (id: string) => {
-				const response = await fetchDrawing(id);
-				setLocation({ drawingId: id });
+			async (fqDrawingId: FQDrawingId) => {
+				const response = await fetchDrawing(fqDrawingIdToString(fqDrawingId));
+				setLocation(fqDrawingId);
 				return response;
 			},
 			{
@@ -130,7 +163,10 @@ export const drawingSlice = createAppSlice({
 							},
 							savedDrawing: {
 								...action.payload,
-								id: action.meta.arg
+								repo: {
+									name: action.meta.arg.repoId,
+									label: state.drawingRepos.value.find(repo => repo.name === action.meta.arg.repoId)?.label ?? "???"
+								}
 							},
 							currentElements: action.payload.elements
 						}
@@ -142,7 +178,7 @@ export const drawingSlice = createAppSlice({
 			}
 		),
 		clearCanvas: create.preparedReducer(() => {
-			setLocation({});
+			setLocation(null);
 			// if (window.location.pathname !== "") {
 			// 	window.history.pushState({}, "", "/");
 			// }
@@ -162,7 +198,7 @@ export const drawingSlice = createAppSlice({
 		createDrawing: create.asyncThunk(
 			async (payload: Drawing) => {
 				const drawingId = await createDrawingApi(payload.title, payload.elements);
-				setLocation({ drawingId });
+				setLocation({ repoId: payload.repo!.name!, drawingId: payload.id! });
 				return drawingId;
 			},
 			{
@@ -220,11 +256,7 @@ export const drawingSlice = createAppSlice({
 	// You can define your selectors here. These selectors receive the slice
 	// state as their first argument.
 	selectors: {
-		selectDrawingRepos: drawing => {
-			const drawingLists = drawing.drawingLists.value;
-			const repos: DrawingRepoRef[] = Object.keys(drawingLists).map(repoName => drawingLists[repoName].repoRef);
-			return repos;
-		},
+		selectDrawingRepos: drawing => drawing.drawingRepos.value,
 		selectDrawingLists: drawing => drawing.drawingLists.value,
 		selectDrawingListStatus: drawing => drawing.drawingLists.getList.status,
 		selectSavedDrawing: drawing => drawing.drawingInEdit.savedDrawing,
@@ -233,7 +265,7 @@ export const drawingSlice = createAppSlice({
 	}
 });
 
-export const { getDrawingLists, getDrawingContent, clearCanvas, createDrawing, saveDrawingContent } =
+export const { getDrawingRepositories, getDrawingLists, getDrawingContent, clearCanvas, createDrawing, saveDrawingContent } =
 	drawingSlice.actions;
 
 export const {

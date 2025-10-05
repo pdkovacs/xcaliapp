@@ -32,7 +32,7 @@ export const OpenDrawingDialog = ({ open, onClose }: OpenDrawingDialogProps) => 
 			console.warn("selectedDrawing?.id is nil: ", drawingSelection);
 			return;
 		}
-		dispatch(getDrawingContent(drawingSelection.repo.name + "-" + drawingSelection.drawing.id));
+		dispatch(getDrawingContent({ repoId: drawingSelection.repo.name, drawingId: drawingSelection.drawing.id }));
 		onClose();
 	};
 
