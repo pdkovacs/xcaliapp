@@ -6,7 +6,7 @@ import { AsyncOperationState, getDrawingContent, getDrawingLists, selectDrawingL
 
 import style from "./Drawing.module.css";
 import { DrawingRepoRef, DrawingRepoItem } from "./drawingAPI";
-import { isNil } from "lodash";
+import { isEmpty, isNil } from "lodash";
 
 interface OpenDrawingDialogProps {
 	readonly open: boolean;
@@ -78,24 +78,35 @@ const DrawingSelector = ({ selection, onChange }: DrawingSelectorProps) => {
 	const selectedRepoContent = drawingLists?.[repoToShowSelected.name]?.items;
 	const drawingToShowSelected = selectedDrawing || selectedRepoContent?.[0] || "";
 
-	console.log(">>>>>>>>> repoToShowSelected: ", repoToShowSelected, ", selectedDrawing: ", selectedDrawing);
-
 	useEffect(() => {
-		if (isNil(selection?.repo?.name)) {
+		if (isEmpty(repos) || isEmpty(drawingLists)) {
 			return;
 		}
-		// if (selection.repo.name !==)
-	}, [selection?.repo?.name]);
+
+		const repo = repos[0];
+		const drawingsInRepo = drawingLists[repo.name];
+		if (isNil(drawingsInRepo) || isEmpty(drawingsInRepo.items)) {
+			console.warn("No drawings in repo ", repo.label, " (yet). Funny! (drawingsInRepo: ", drawingsInRepo, ")");
+			return;
+		}
+
+		onChange({
+			repo,
+			drawing: drawingsInRepo.items[0]
+		});
+	}, [repos, drawingLists]);
+
 
 	return <div className={style.openSaveDrawingDialogContent}>
 		<FormControl className={style.selectRepo}>
 			<InputLabel>Repository</InputLabel>
 			<Select
 				label="Repository"
-				onChange={event => onChange({
-					repo: repos.find(repo => repo.name === event.target.value) ?? repoToShowSelected,
-					drawing: undefined
-				})}
+				onChange={event => {
+					const repo = repos.find(repo => repo.name === event.target.value) ?? repoToShowSelected;
+					const drawing = drawingLists[repo.name].items[0];
+					onChange({ repo, drawing });
+				}}
 				value={repoToShowSelected.name}
 			>
 				{
