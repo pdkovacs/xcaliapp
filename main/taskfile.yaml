@@ -74,6 +74,11 @@ tasks:
           echo "The task variable VERSION_DESCRIPTION must be set"
           exit 1
         fi
+        if [ ! -f ${HOME}/.github-xcaliapp-access ];
+        then
+          echo "The file ${HOME}/.github-xcaliapp-access must exist"
+          exit 1
+        fi
       - task: webclient:build
       - |
         RELEASE_TAG="xcaliapp-{{.WEBAPP_VERSION}}"
@@ -92,15 +97,15 @@ tasks:
           done;
         done;
         cd ..
-          for d in $(find . -maxdepth 1 -type d);
-          do
-            [ "$d" == "." ] && continue;
-            echo $d;
-            cd $d
-            git tag -a -f "$RELEASE_TAG"
-            git push -f --tags
-            cd -
-          done
+        for d in $(find . -maxdepth 1 -type d);
+        do
+          [ "$d" == "." ] && continue;
+          echo $d;
+          cd $d
+          git tag -a -f "$RELEASE_TAG"
+          git push -f --tags
+          cd -
+        done
 
         MY_TOKEN=$(cat ~/.github-xcaliapp-access)
         create_release_data='{"tag_name":"{{.WEBAPP_VERSION}}","target_commitish":"main","name":"{{.WEBAPP_VERSION}}","body":"{{.VERSION_DESCRIPTION}}","draft":false,"prerelease":false,"generate_release_notes":false}'
@@ -117,7 +122,6 @@ tasks:
         release_id=$(cat create-release-response.json | jq '.id')
 
         server_directory=$(readlink -f ../server)
-        path_to_executable="$server_directory/$executable"
 
         for os in $oses;
         do
@@ -126,7 +130,9 @@ tasks:
             export GOOS=$os
             export GOARCH=$arch
             executable="xcaliapp_${GOOS}_${GOARCH}"
+            path_to_executable="$server_directory/$executable"
             echo "Uploading $path_to_executable..."
+            set -x
             curl -L \
               -X POST \
               -H "Accept: application/vnd.github+json" \
@@ -135,5 +141,6 @@ tasks:
               -H "Content-Type: application/octet-stream" \
               "https://uploads.github.com/repos/xcaliapp/main/releases/$release_id/assets?name=$executable" \
               --data-binary "@${path_to_executable}"
+            set +x
           done;
         done;
