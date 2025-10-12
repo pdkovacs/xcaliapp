@@ -4,9 +4,11 @@ import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { useEffect, useState } from "react";
 import { AsyncOperationState, getDrawingContent, getDrawingLists, selectDrawingLists, selectDrawingListStatus, selectDrawingRepos } from "./drawingSlice";
 
-import style from "./Drawing.module.css";
 import { DrawingRepoRef, DrawingRepoItem } from "./drawingAPI";
 import { isEmpty, isNil } from "lodash";
+import { RepositorySelector } from "./RepositorySelector";
+
+import style from "./Drawing.module.css";
 
 interface OpenDrawingDialogProps {
 	readonly open: boolean;
@@ -98,23 +100,10 @@ const DrawingSelector = ({ selection, onChange }: DrawingSelectorProps) => {
 
 
 	return <div className={style.openSaveDrawingDialogContent}>
-		<FormControl className={style.selectRepo}>
-			<InputLabel>Repository</InputLabel>
-			<Select
-				label="Repository"
-				onChange={event => {
-					const repo = repos.find(repo => repo.name === event.target.value) ?? repoToShowSelected;
-					const drawing = drawingLists[repo.name].items[0];
-					onChange({ repo, drawing });
-				}}
-				value={repoToShowSelected.name}
-			>
-				{
-					repos.map(repo => <MenuItem key={repo.name} value={repo.name}>{repo.label}</MenuItem>)
-				}
-			</Select>
-		</FormControl>
-
+		<RepositorySelector availableRepos={repos} currentSelection={repoToShowSelected} requestSelectionChange={requestedRepo => {
+			const drawing = drawingLists[requestedRepo.name].items[0];
+			onChange({ repo: requestedRepo, drawing });
+		}} />
 		<FormControl className={style.selectDrawing}>
 			<InputLabel>Drawing</InputLabel>
 			<Select

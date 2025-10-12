@@ -11,6 +11,10 @@
 	overflow: auto;
 }
 
+.drawingListContainer {
+	height: 500px;
+}
+
 .drawingListItem {
 	display: flex;
 	align-items: center;
@@ -18,6 +22,9 @@
 
 .dialogContent {
 	margin-top: 4px;
+	display: flex;
+	flex-direction: column;
+	gap: 32px;
 }
 
 .workInProgress {

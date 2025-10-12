@@ -1,14 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, Menu, MenuItem, TextField } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
-import { AsyncOperationState, getDrawingLists, selectDrawingLists, selectDrawingListStatus } from "./drawingSlice";
+import { AsyncOperationState, getDrawingLists, selectDrawingLists, selectDrawingListStatus, selectDrawingRepos } from "./drawingSlice";
 
 import style from "./ManageDrawingsDialog.module.css";
 import { isEmpty } from "lodash";
 import classNames from "classnames";
 import { ErrorDialog, ErrorDialogData } from "../../utils/ErrorDialog";
-import { deleteDrawings, DrawingRepoItem, fetchDrawing, saveDrawing } from "./drawingAPI";
+import { deleteDrawings, Drawing, DrawingRepoItem, DrawingRepoRef, fetchDrawing, saveDrawing } from "./drawingAPI";
 import { emptyArray } from "../../utils/empty-array";
+import { RepositorySelector } from "./RepositorySelector";
 
 export interface ManageDrawingsDialogProps {
 	readonly open: boolean
@@ -16,6 +17,9 @@ export interface ManageDrawingsDialogProps {
 }
 
 export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProps) => {
+	const availableRepos = useAppSelector(selectDrawingRepos);
+	const [selectedRepo, setSelectedRepo] = useState<DrawingRepoRef>(availableRepos[0]);
+
 	const drawingListStatus = useAppSelector(selectDrawingListStatus);
 
 	const [workInProgress, setWorkInProgress] = useState(false);
@@ -35,6 +39,10 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 			setSelectedDrawings(emptyArray);
 		}
 	}, [open]);
+
+	useEffect(() => {
+		setSelectedRepo(availableRepos[0]);
+	}, availableRepos);
 
 	const enabledActions = useMemo(() => {
 		if (isEmpty(selectedDrawings)) {
@@ -63,10 +71,11 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 				case Action.RENAME:
 					setRenameDrawingDialogOpen(false);
 					if (confirmed !== false) {
-						const id = selectedDrawings[0].id;
+						const drawingId = selectedDrawings[0].id;
 						const newTitle = confirmed as string;
-						const content = await fetchDrawing(id);
-						await saveDrawing({ id, title: newTitle, elements: content.elements });
+						const content = await fetchDrawing({ repoId: selectedRepo.name, drawingId });
+						const drawing: Drawing = { repo: selectedRepo, id: drawingId, title: newTitle, elements: content.elements };
+						await saveDrawing(drawing);
 						setSelectedDrawings(emptyArray);
 						dispatch(getDrawingLists());
 					}
@@ -107,13 +116,24 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 			</DialogTitle>
 			<DialogContent>
 				{workInProgress && <LinearProgress />}
-				<div className={classNames(style.dialogContent, { [style.workInProgress]: workInProgress })}>{
-					drawingListStatus === AsyncOperationState.inProgress
-						? <CircularProgress />
-						: drawingListStatus === AsyncOperationState.failed
-							? <Alert severity="error">Failed to load drawing list</Alert>
-							: <ManageDrawingsPanel selectedDrawings={selectedDrawings} onDrawingSelectionChanged={(drawing, checked) => handleDrawingSelectionChange(drawing, checked)} />
-				}</div>
+				<div className={classNames(style.dialogContent, { [style.workInProgress]: workInProgress })}>
+					<RepositorySelector
+						availableRepos={availableRepos}
+						currentSelection={selectedRepo}
+						requestSelectionChange={setSelectedRepo}
+					/>
+					{
+						drawingListStatus === AsyncOperationState.inProgress
+							? <CircularProgress />
+							: drawingListStatus === AsyncOperationState.failed
+								? <Alert severity="error">Failed to load drawing list</Alert>
+								: <ManageDrawingsPanel
+									selectedRepo={selectedRepo}
+									selectedDrawings={selectedDrawings}
+									onDrawingSelectionChanged={(drawing, checked) => handleDrawingSelectionChange(drawing, checked)}
+								/>
+					}
+				</div>
 			</DialogContent>
 			<DialogActions>
 				<Button onClick={onClose}>Close</Button>
@@ -127,18 +147,18 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 };
 
 interface ManageDrawingsPanelProps {
+	readonly selectedRepo: DrawingRepoRef;
 	readonly selectedDrawings: DrawingRepoItem[];
 	readonly onDrawingSelectionChanged: (drawing: DrawingRepoItem, checked: boolean) => void;
 }
 
-const ManageDrawingsPanel = ({ selectedDrawings, onDrawingSelectionChanged }: ManageDrawingsPanelProps) => {
+const ManageDrawingsPanel = ({ selectedRepo, selectedDrawings, onDrawingSelectionChanged }: ManageDrawingsPanelProps) => {
 	const drawingLists = useAppSelector(selectDrawingLists);
 
-	return <div className={style.wideDialogContent + " " + style.overflowingDialogContent}>
+	return <div className={classNames(style.wideDialogContent, style.overflowingDialogContent, style.drawingListContainer)}>
 		<div>
 			{
-				// TODO: use selected repo
-				drawingLists["adsf"].items.map(drawing => {
+				drawingLists[selectedRepo.name].items.map(drawing => {
 					return <div className={style.drawingListItem} key={drawing.id}>
 						<Checkbox checked={selectedDrawings.includes(drawing)} onChange={change => onDrawingSelectionChanged(drawing, change.target.checked)} />
 						<div>{drawing.title}</div>
@@ -212,7 +232,7 @@ const RenameDrawingDialog = ({ open, drawing, onClose }: RenameDrawingDialogProp
 	return <Dialog open={open} maxWidth="xl">
 		<DialogTitle>Rename drawing</DialogTitle>
 		<DialogContent className={style.wideDialogContent + " " + style.overflowingDialogContent}>
-			<TextField label="New title" size="small" sx={{ width: "100%" }} onChange={event => setTitleToRenameTo(event.target.value)} value={titleToRenameTo ?? drawing.title} />
+			<TextField label="New title" size="small" sx={{ marginTop: "16px", width: "100%" }} onChange={event => setTitleToRenameTo(event.target.value)} value={titleToRenameTo ?? drawing.title} />
 		</DialogContent>
 		<DialogActions>
 			<Button onClick={() => handleOnClose(false)}>Cancel</Button>

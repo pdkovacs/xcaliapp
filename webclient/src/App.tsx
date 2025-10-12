@@ -90,7 +90,7 @@ const App = () => {
 		}
 	}, [excalidrawAPI]);
 
-	const fullTitle = useMemo(() => `${savedDrawing.repo?.label}: ${savedDrawing.title}`, [savedDrawing]);
+	const fullTitle = useMemo(() => savedDrawing.repo?.label ? `${savedDrawing.repo?.label}: ${savedDrawing.title}` : "", [savedDrawing]);
 
 	useEffect(() => {
 		if (excalidrawAPI && savedDrawing?.elements) {

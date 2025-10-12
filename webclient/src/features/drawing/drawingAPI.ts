@@ -14,9 +14,16 @@ export interface DrawingRepoRef {
 	readonly label: string;
 }
 
+export interface FQDrawingId {
+	readonly repoId: string;
+	readonly drawingId: string;
+}
+
+export const fqDrawingIdToString = (fqDrawingId: FQDrawingId): string => `${fqDrawingId.repoId}-${fqDrawingId.drawingId}`;
+
 export interface Drawing extends XcalidrawDocument {
 	readonly id?: string;
-	readonly repo?: DrawingRepoRef;
+	readonly repo: DrawingRepoRef;
 }
 
 export interface DrawingRepoItem {
@@ -42,8 +49,8 @@ export const fetchDrawingList = async (): Promise<DrawingLists> => {
 	return drawingRepoNameToDrawingRepoContent;
 };
 
-export const fetchDrawing = async (id: string): Promise<Drawing> => {
-	const response = await axios.get(`/api/drawing/${id}`);
+export const fetchDrawing = async (id: FQDrawingId): Promise<Drawing> => {
+	const response = await axios.get(`/api/drawing/${fqDrawingIdToString(id)}`);
 	return JSON.parse(response.data);
 };
 
@@ -58,7 +65,7 @@ export const createDrawing = async (title: string, elements: XcalidrawContent): 
 };
 
 export const saveDrawing = async (drawing: Drawing): Promise<string> => {
-	const response = await axios.put(`/api/drawing/${drawing.id}`, JSON.stringify({ content: JSON.stringify(drawing, null, "\t") }), { headers: { "Content-Type": "application/json" } });
+	const response = await axios.put(`/api/drawing/${drawing.repo?.name}-${drawing.id}`, JSON.stringify({ content: JSON.stringify(drawing, null, "\t") }), { headers: { "Content-Type": "application/json" } });
 	return response.data;
 };
 

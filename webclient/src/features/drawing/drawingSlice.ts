@@ -1,8 +1,8 @@
 import { isNil } from "lodash";
 import { createAppSlice } from "../../app/createAppSlice";
 import { emptyArray } from "../../utils/empty-array";
-import type { Drawing, DrawingLists, DrawingRepoRef } from "./drawingAPI";
-import { fetchDrawing, fetchDrawingList, createDrawing as createDrawingApi, saveDrawing, fetchDrawingRepositories } from "./drawingAPI";
+import type { Drawing, DrawingLists, DrawingRepoRef, FQDrawingId } from "./drawingAPI";
+import { fetchDrawing, fetchDrawingList, createDrawing as createDrawingApi, saveDrawing, fetchDrawingRepositories, fqDrawingIdToString } from "./drawingAPI";
 
 export enum AsyncOperationState {
 	idle = "idle",
@@ -13,15 +13,12 @@ export enum AsyncOperationState {
 const emptyDrawing: Drawing = {
 	id: "",
 	title: "",
-	elements: emptyArray
+	elements: emptyArray,
+	repo: {
+		name: "",
+		label: ""
+	}
 };
-
-interface FQDrawingId {
-	readonly repoId: string;
-	readonly drawingId: string;
-}
-
-const fqDrawingIdToString = (fqDrawingId: FQDrawingId): string => `${fqDrawingId.repoId}-${fqDrawingId.drawingId}`;
 
 export interface DrawingSliceState {
 	drawingRepos: {
@@ -144,7 +141,7 @@ export const drawingSlice = createAppSlice({
 		),
 		getDrawingContent: create.asyncThunk(
 			async (fqDrawingId: FQDrawingId) => {
-				const response = await fetchDrawing(fqDrawingIdToString(fqDrawingId));
+				const response = await fetchDrawing(fqDrawingId);
 				setLocation(fqDrawingId);
 				return response;
 			},
@@ -163,6 +160,7 @@ export const drawingSlice = createAppSlice({
 							},
 							savedDrawing: {
 								...action.payload,
+								id: action.meta.arg.drawingId,
 								repo: {
 									name: action.meta.arg.repoId,
 									label: state.drawingRepos.value.find(repo => repo.name === action.meta.arg.repoId)?.label ?? "???"
