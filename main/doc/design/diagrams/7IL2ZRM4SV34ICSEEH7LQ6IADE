@@ -1,6 +1,10 @@
 {
-	"type": "excalidraw",
-	"title": "Xcalidraw / Manage Drawings dialog",
+	"repo": {
+		"name": "xcaliapp",
+		"label": "XCalidraw Application"
+	},
+	"id": "7IL2ZRM4SV34ICSEEH7LQ6IADE",
+	"title": "Manage Drawings dialog",
 	"elements": [
 		{
 			"id": "nvfoZCLASiJo-Vt8SyqYN",
@@ -1419,10 +1423,5 @@
 			"link": null,
 			"locked": false
 		}
-	],
-	"id": "7IL2ZRM4SV34ICSEEH7LQ6IADE",
-	"repo": {
-		"name": "xcaliapp",
-		"label": "XCalidraw Application"
-	}
+	]
 }
