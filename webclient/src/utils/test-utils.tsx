@@ -20,7 +20,7 @@ interface ExtendedRenderOptions extends Omit<RenderOptions, "queries"> {
    * controlled manner during testing, allowing components to be rendered
    * with predetermined state conditions.
    */
-	preloadedState?: Partial<RootState>
+	preloadedState?: Partial<RootState>;
 
 	/**
    * Allows the use of a specific Redux store instance instead of a
@@ -31,7 +31,7 @@ interface ExtendedRenderOptions extends Omit<RenderOptions, "queries"> {
    *
    * @default makeStore(preloadedState)
    */
-	store?: AppStore
+	store?: AppStore;
 }
 
 /**

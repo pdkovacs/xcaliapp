@@ -10,15 +10,19 @@ import "@fontsource/roboto/400.css";
 import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
 import { SnackbarProvider } from "notistack";
-import { ErrorBoundary } from "react-error-boundary";
+import { ErrorBoundary, FallbackProps } from "react-error-boundary";
 import { useReporters } from "./utils/use-reporters";
 
-const ErrorFallback = ({ error }: { error: Error; }): JSX.Element|null => {
+const ErrorFallback = ({ error }: FallbackProps): JSX.Element | null => {
 
 	const { reportError } = useReporters();
 
 	useEffect(() => {
-		reportError(error.message);
+		if (error instanceof Error) {
+			reportError(error.message);
+		} else {
+			reportError(String(error));
+		}
 	}, [error]);
 
 	return null;

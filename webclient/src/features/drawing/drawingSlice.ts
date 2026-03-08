@@ -24,19 +24,19 @@ export interface DrawingSliceState {
 	drawingRepos: {
 		getRepos: {
 			status: AsyncOperationState;
-		},
-		value: DrawingRepoRef[]
-	},
+		};
+		value: DrawingRepoRef[];
+	};
 	drawingLists: {
 		getList: {
 			status: AsyncOperationState;
-		}
+		};
 		value: DrawingLists;
 	};
 	drawingInEdit: {
 		open: {
 			status: AsyncOperationState;
-		}
+		};
 		save: {
 			status: AsyncOperationState;
 		};
@@ -44,12 +44,12 @@ export interface DrawingSliceState {
 	};
 	drawingManagement: {
 		rename: {
-			status: AsyncOperationState
-		}
+			status: AsyncOperationState;
+		};
 		delete: {
-			status: AsyncOperationState
-		}
-	}
+			status: AsyncOperationState;
+		};
+	};
 }
 
 const initialState: DrawingSliceState = {

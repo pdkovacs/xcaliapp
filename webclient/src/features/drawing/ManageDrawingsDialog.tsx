@@ -12,7 +12,7 @@ import { emptyArray } from "../../utils/empty-array";
 import { RepositorySelector } from "./RepositorySelector";
 
 export interface ManageDrawingsDialogProps {
-	readonly open: boolean
+	readonly open: boolean;
 	readonly onClose: () => void;
 }
 
