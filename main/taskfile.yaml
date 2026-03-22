@@ -10,7 +10,7 @@ vars:
   GO_MODULES:
     sh: dir -1 ../ | while read d; do test -f ../$d/go.mod && echo $d; done
   GIT_REPOS: gitstore lambda s3store server vcblobstore webclient main
-    
+
   WEBAPP_VERSION: ""
 
   DRAWINGS_BUCKET_NAME: '{{ .DRAWINGS_BUCKET_NAME | default "test-xcalidrawings" }}'
@@ -37,7 +37,6 @@ tasks:
         for mod in $(echo '{{.GIT_REPOS}}');
         do
           cd "{{.WORKSPACE_DIR}}"
-            git clone git@github.com:xcaliapp/$mod.git
             test -f $mod/go.mod && go work use $mod
           cd -
         done
