@@ -3,12 +3,10 @@ package awslambda
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"s3store"
-	"strings"
 )
 
 type lambdaResponse struct {
@@ -25,99 +23,62 @@ type LambdaResponseToAPIGW struct {
 	Body              string              `json:"body"`
 }
 
-func createApiGwResponse(challange bool, session string, lambdaResult lambdaResponse) (*LambdaResponseToAPIGW, error) {
-	var respStruct *LambdaResponseToAPIGW
-	headers := make(map[string]string)
+func unauthorized(message string) LambdaResponseToAPIGW {
+	return LambdaResponseToAPIGW{
+		StatusCode: http.StatusUnauthorized,
+		Headers:    map[string]string{"Content-Type": "text/plain"},
+		Body:       message,
+	}
+}
+
+func createApiGwResponse(result lambdaResponse) (*LambdaResponseToAPIGW, error) {
 	bodyToSend := ""
-
-	if challange && len(session) > 0 {
-		return respStruct, fmt.Errorf("invalid arguments: either challange or session, not both")
-	}
-
-	if challange {
-		return &LambdaResponseToAPIGW{
-			StatusCode:        401,
-			Headers:           map[string]string{"WWW-Authenticate": "Basic"},
-			IsBase64Encoded:   false,
-			MultiValueHeaders: nil,
-			Body:              "",
-		}, nil
-	}
-
-	if len(session) > 0 {
-		cookieToSet := &http.Cookie{
-			Name:     sessionCookieName,
-			Value:    session,
-			Path:     "/",
-			MaxAge:   3600,
-			HttpOnly: true,
-			Secure:   true,
-			SameSite: http.SameSiteLaxMode,
+	if result.body != nil {
+		if s, isString := result.body.(string); isString {
+			bodyToSend = s
+		} else {
+			marshalled, marshalErr := json.Marshal(result.body)
+			if marshalErr != nil {
+				return nil, marshalErr
+			}
+			bodyToSend = string(marshalled)
 		}
-
-		headers = map[string]string{"Set-Cookie": cookieToSet.String()}
-	}
-
-	if lambdaResult.body != nil {
-		bodyToSendInBytes, marshalErr := json.Marshal(lambdaResult.body)
-		if marshalErr != nil {
-			return respStruct, marshalErr
-		}
-		bodyToSend = string(bodyToSendInBytes)
-	}
-
-	mergedHeaders := make(map[string]string)
-	for k, v := range headers {
-		mergedHeaders[k] = v
-	}
-	for k, v := range lambdaResult.headers {
-		mergedHeaders[k] = v
 	}
 
 	status := http.StatusOK
-	if lambdaResult.statusCode > 0 {
-		status = lambdaResult.statusCode
+	if result.statusCode > 0 {
+		status = result.statusCode
 	}
 
-	respStruct = &LambdaResponseToAPIGW{
-		StatusCode:        status,
-		Headers:           mergedHeaders,
-		IsBase64Encoded:   false,
-		MultiValueHeaders: nil,
-		Body:              bodyToSend,
-	}
-
-	return respStruct, nil
+	return &LambdaResponseToAPIGW{
+		StatusCode:      status,
+		Headers:         result.headers,
+		IsBase64Encoded: false,
+		Body:            bodyToSend,
+	}, nil
 }
 
-func getSessionStoreBucketName() string {
+func getDrawingsBucketName() string {
 	bucketName := os.Getenv("DRAWINGS_BUCKET_NAME")
-	if len(bucketName) == 0 {
-		panic("failed to obtain bucket-name from Lambda Context")
+	if bucketName == "" {
+		panic("DRAWINGS_BUCKET_NAME must be set")
 	}
 	return bucketName
 }
 
 func initSessionStore() *s3store.SessionStore {
-	store, storeErr := s3store.NewSessionStore(context.Background(), getSessionStoreBucketName())
-	if storeErr != nil {
-		panic(fmt.Sprintf("failed to created S3 store: %v", storeErr))
+	store, err := s3store.NewSessionStore(context.Background(), getDrawingsBucketName())
+	if err != nil {
+		panic(fmt.Sprintf("failed to create session store: %v", err))
 	}
-
 	return store
 }
 
 func initDrawingStore() *s3store.DrawingStore {
-	bucketName := os.Getenv("DRAWINGS_BUCKET_NAME")
-	if len(bucketName) == 0 {
-		panic("failed to obtain bucket-name from Lambda Context")
+	store, err := s3store.NewDrawingStore(context.Background(), getDrawingsBucketName())
+	if err != nil {
+		panic(fmt.Sprintf("failed to create drawing store: %v", err))
 	}
-
-	store, storeErr := s3store.NewDrawingStore(context.Background(), bucketName)
-	if storeErr != nil {
-		panic(fmt.Sprintf("failed to created S3 store: %v", storeErr))
-	}
-
 	return store
 }
 
@@ -126,76 +87,35 @@ var (
 	drawingStore = initDrawingStore()
 )
 
-// parseEventCheckCreateSession parses the event and, after checking the "Cookie" and "authentication" header for credentials returns as the map-typed first parameter.
-// The second return value is the session value the browser needs to set, the third parameter is an error response (most with a WWW-Authenticate challange) if any
-// the last parameter is an internal processing error if any.
-func parseEventCheckCreateSession(sessMan SessionManager, ctx context.Context, event json.RawMessage) (map[string]any, string, *LambdaResponseToAPIGW, error) {
-	var response *LambdaResponseToAPIGW
+func parseEventVerifyAccess(event json.RawMessage) (map[string]any, string, error) {
 	var parsedEvent map[string]any
-
-	if eventParseErr := json.Unmarshal(event, &parsedEvent); eventParseErr != nil {
-		fmt.Printf("Failed to unmarshal event: %v", eventParseErr)
-		return nil, "", response, eventParseErr
+	if err := json.Unmarshal(event, &parsedEvent); err != nil {
+		return nil, "", fmt.Errorf("failed to unmarshal event: %w", err)
 	}
 
-	fmt.Printf("parsedEvent: %#v\n", parsedEvent)
-	fmt.Printf("path: %#v\n", parsedEvent["path"])
-	fmt.Printf("httpMethod: %#v\n", parsedEvent["httpMethod"])
-	fmt.Printf("cookies: %#v\n", parsedEvent["cookies"])
-	fmt.Printf("headers: %#v\n", parsedEvent["headers"])
-	fmt.Printf("multiValueHeaders: %#v\n", parsedEvent["multiValueHeaders"])
-	fmt.Printf("pathParameters: %#v\n", parsedEvent["pathParameters"])
-	fmt.Printf("queryStringParameters: %#v\n", parsedEvent["queryStringParameters"])
-
-	headers, headersCastOk := parsedEvent["headers"].(map[string]any)
-	if !headersCastOk {
-		fmt.Printf("failed to cast headers:\n")
-		return nil, "", response, fmt.Errorf("failed to cast headers")
+	headers, ok := parsedEvent["headers"].(map[string]any)
+	if !ok {
+		return nil, "", fmt.Errorf("event has no headers")
 	}
 
-	var incomingCookieValue string
-	if headers["Cookie"] != nil {
-		fmt.Printf("cookies received: %#v\n", headers["Cookie"])
-		cookieString, cookiesCastOk := headers["Cookie"].(string)
-		if !cookiesCastOk {
-			fmt.Printf("failed to cast cookies: %#v\n", headers["Cookie"])
-			return nil, "", response, fmt.Errorf("failed to cast cookies")
-		}
-		cookies := strings.Split(cookieString, ";")
-		for _, cookie := range cookies {
-			cookieParts := strings.Split(cookie, "=")
-			fmt.Printf("checking cookie name: %v\n", cookieParts[0])
-			if cookieParts[0] == sessionCookieName {
-				incomingCookieValue = cookieParts[1]
-			}
-		}
-		if len(incomingCookieValue) == 0 {
-			fmt.Printf("cookie named %s not found\n", sessionCookieName)
+	if cfIP, _ := headers["cf-connecting-ip"].(string); cfIP == "" {
+		return nil, "", fmt.Errorf("missing cf-connecting-ip header")
+	}
+
+	var token string
+	if raw, present := headers[accessJWTHeaderKey]; present {
+		if s, isString := raw.(string); isString {
+			token = s
 		}
 	}
-
-	sessionId, createSessErr := sessMan.checkCreateSession(ctx, incomingCookieValue, headers)
-	if createSessErr != nil {
-		fmt.Printf("failed to create session: %v\n", createSessErr)
-
-		var challange *Challange
-		if errors.As(createSessErr, &challange) {
-			fmt.Printf("preparing challange for client...\n")
-			response, createRespErr := createApiGwResponse(true, "", lambdaResponse{})
-			if createRespErr != nil {
-				fmt.Printf("failed to create response: %v\n", createRespErr)
-				return nil, "", response, createRespErr
-			}
-			fmt.Printf("returning response with challange: %v...\n", response)
-			return nil, "", response, nil
-		}
-
-		return nil, "", response, createSessErr
+	if token == "" {
+		return nil, "", fmt.Errorf("missing %s header", accessJWTHeaderKey)
 	}
 
-	if len(sessionId) == 0 {
-		return parsedEvent, "", response, nil
+	email, verifyErr := verifier.verify(token)
+	if verifyErr != nil {
+		return nil, "", verifyErr
 	}
 
-	return parsedEvent, sessionId, nil, nil
+	return parsedEvent, email, nil
 }

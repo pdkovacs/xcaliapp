@@ -15,12 +15,12 @@ tasks:
     cmds:
       - task: prod:build
       - |
-        cd ../tf/aws-lambda/prod
+        cd tf/aws-lambda/prod
         terraform init
         terraform apply -var s3_bucket={{.DRAWINGS_BUCKET_NAME}}
   prod:undeploy:
     cmds:
       - |
-        cd ../tf/aws-lambda/prod
+        cd tf/aws-lambda/prod
         terraform init
         terraform destroy -var s3_bucket={{.DRAWINGS_BUCKET_NAME}}

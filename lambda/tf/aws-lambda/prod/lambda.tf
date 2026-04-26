@@ -85,17 +85,6 @@ resource "aws_iam_role_policy_attachment" "read_write_s3_bucket" {
   policy_arn = aws_iam_policy.read_write_s3_bucket.arn
 }
 
-resource "aws_lambda_permission" "apigw" {
-  statement_id  = "AllowAPIGatewayInvoke"
-  action        = "lambda:InvokeFunction"
-  function_name = local.function_name
-  principal     = "apigateway.amazonaws.com"
-
-  # The /*/* portion grants access from any method on any resource
-  # within the API Gateway "REST API".
-  source_arn = "${aws_apigatewayv2_api.xcaliapp_prod.execution_arn}/*/*"
-}
-
 data "archive_file" "lambda" {
   type        = "zip"
   source_file = "${local.impl_directory}/bootstrap"
@@ -115,7 +104,9 @@ resource "aws_lambda_function" "xcali_prod" {
 
   environment {
     variables = {
-      DRAWINGS_BUCKET_NAME = var.s3_bucket
+      DRAWINGS_BUCKET_NAME  = var.s3_bucket
+      CF_ACCESS_TEAM_DOMAIN = var.cf_access_team_domain
+      CF_ACCESS_AUD         = cloudflare_zero_trust_access_application.app.aud
     }
   }
 
@@ -126,7 +117,7 @@ resource "aws_lambda_function" "xcali_prod" {
 }
 
 resource "aws_cloudwatch_log_group" "xcali_prod" {
-  name              = "/aws/lambda/xcaliapp-${local.function_name}"
+  name              = "/aws/lambda/${local.function_name}"
   retention_in_days = 14
 }
 
@@ -154,5 +145,25 @@ resource "aws_iam_policy" "lambda_logging" {
 resource "aws_iam_role_policy_attachment" "lambda_logs" {
   role       = aws_iam_role.iam_for_lambda.name
   policy_arn = aws_iam_policy.lambda_logging.arn
+}
+
+resource "aws_lambda_function_url" "xcali_prod" {
+  function_name      = aws_lambda_function.xcali_prod.function_name
+  authorization_type = "NONE"
+}
+
+resource "aws_lambda_permission" "function_url_public" {
+  statement_id           = "AllowPublicFunctionUrlAccess"
+  action                 = "lambda:InvokeFunctionUrl"
+  function_name          = aws_lambda_function.xcali_prod.function_name
+  principal              = "*"
+  function_url_auth_type = "NONE"
+}
+
+resource "aws_lambda_permission" "function_invoke_public" {
+  statement_id  = "AllowPublicInvokeFunction"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.xcali_prod.function_name
+  principal     = "*"
 }
 
