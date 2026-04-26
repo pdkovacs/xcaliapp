@@ -8,6 +8,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 const (
@@ -22,14 +23,14 @@ type DrawingStore struct {
 	bucketName string
 }
 
-// TODO: use the modifiedBy parameter
 func (store *DrawingStore) PutDrawing(ctx context.Context, title string, content io.Reader, modifiedBy string) error {
 	key := fmt.Sprintf("%s/%s", drawingContentObjectKeyPrefix, title)
 
 	input := s3.PutObjectInput{
-		Bucket: &store.bucketName,
-		Key:    &key,
-		Body:   content,
+		Bucket:   &store.bucketName,
+		Key:      &key,
+		Body:     content,
+		Metadata: modifiedByMetadata(modifiedBy),
 	}
 	_, err := store.s3Client.PutObject(ctx, &input)
 	if err != nil {
@@ -39,15 +40,16 @@ func (store *DrawingStore) PutDrawing(ctx context.Context, title string, content
 	return nil
 }
 
-// TODO: use the modifiedBy parameter
 func (store *DrawingStore) CopyDrawing(ctx context.Context, sourceTitle string, targetTitle string, modifiedBy string) error {
-	copySource := fmt.Sprintf("%s/%s", drawingContentObjectKeyPrefix, sourceTitle)
+	copySource := fmt.Sprintf("%s/%s/%s", store.bucketName, drawingContentObjectKeyPrefix, sourceTitle)
 	key := fmt.Sprintf("%s/%s", drawingContentObjectKeyPrefix, targetTitle)
 
 	input := s3.CopyObjectInput{
-		Bucket:     &store.bucketName,
-		Key:        &key,
-		CopySource: &copySource,
+		Bucket:            &store.bucketName,
+		Key:               &key,
+		CopySource:        &copySource,
+		MetadataDirective: types.MetadataDirectiveReplace,
+		Metadata:          modifiedByMetadata(modifiedBy),
 	}
 	_, err := store.s3Client.CopyObject(ctx, &input)
 	if err != nil {
@@ -57,7 +59,8 @@ func (store *DrawingStore) CopyDrawing(ctx context.Context, sourceTitle string, 
 	return nil
 }
 
-// TODO: use the modifiedBy parameter
+// modifiedBy is intentionally not recorded: S3 delete-markers do not carry user
+// metadata. The actor of a deletion is observable only via CloudTrail.
 func (store *DrawingStore) DeleteDrawing(ctx context.Context, title string, modifiedBy string) error {
 	key := fmt.Sprintf("%s/%s", drawingContentObjectKeyPrefix, title)
 
