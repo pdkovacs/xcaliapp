@@ -70,7 +70,7 @@ func handleServeClientRequest(ctx context.Context, event json.RawMessage) (lambd
 }
 
 func handleListDrawingsRequest(ctx context.Context, parsedEvent map[string]any) (lambdaResponse, error) {
-	titles, listErr := drawingStore.ListDrawingTitles(ctx)
+	titles, listErr := drawingStore.ListDrawings(ctx)
 	if listErr != nil {
 		fmt.Printf("failed to list drawing titles: %#v\n", listErr)
 		return lambdaResponse{}, listErr

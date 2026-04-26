@@ -10,9 +10,7 @@ tasks:
     cmds:
       - |
         cd prod
-        lambda_func=xcalidrawing
         GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o bootstrap main.go
-        [ -f "$lambda_func.zip" ] && zip -u "$lambda_func.zip" ./bootstrap || zip "$lambda_func.zip" ./bootstrap
   prod:deploy:
     cmds:
       - task: prod:build

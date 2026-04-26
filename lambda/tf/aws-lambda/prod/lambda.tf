@@ -1,7 +1,7 @@
 locals {
   function_name    = "xcalidrawing"
   archive_filename = "${local.function_name}.zip"
-  impl_directory   = "${path.module}/../aws-lambda"
+  impl_directory   = "${path.module}/../../../prod"
 }
 
 data "aws_s3_bucket" "store" {
@@ -18,6 +18,7 @@ resource "aws_iam_policy" "read_write_s3_bucket" {
         "Effect" : "Allow",
         "Action" : [
           "s3:ListBucket",
+          "s3:ListBucketVersions",
         ],
         "Resource" : [
           "arn:aws:s3:::${var.s3_bucket}"
@@ -27,10 +28,27 @@ resource "aws_iam_policy" "read_write_s3_bucket" {
         "Sid" : "s3readwritebucketobjects",
         "Effect" : "Allow",
         "Action" : [
-          "s3:*Object",
+          "s3:GetObject",
+          "s3:GetObjectVersion",
+          "s3:PutObject",
+          "s3:DeleteObject",
         ],
         "Resource" : [
           "arn:aws:s3:::${var.s3_bucket}/*"
+        ]
+      },
+      {
+        "Sid" : "s3denyhardandversioningchanges",
+        "Effect" : "Deny",
+        "Action" : [
+          "s3:DeleteObjectVersion",
+          "s3:PutBucketVersioning",
+          "s3:PutBucketLifecycleConfiguration",
+          "s3:DeleteBucket",
+        ],
+        "Resource" : [
+          "arn:aws:s3:::${var.s3_bucket}",
+          "arn:aws:s3:::${var.s3_bucket}/*",
         ]
       }
     ]

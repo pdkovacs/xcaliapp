@@ -62,7 +62,8 @@ resource "aws_apigatewayv2_stage" "xcaliapp_prod" {
 
 
 resource "aws_cloudwatch_log_group" "xcaliapp_prodapigw" {
-  name = "/aws/apigw/xcaliapp_prod"
+  name              = "/aws/apigw/xcaliapp_prod"
+  retention_in_days = 14
 }
 
 resource "aws_iam_role" "xcaliapp_prodapigw_cloudwatch" {

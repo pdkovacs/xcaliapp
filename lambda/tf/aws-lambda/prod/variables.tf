@@ -1,4 +1,5 @@
 variable "s3_bucket" {
-  type = string
+  type    = string
+  default = "test-xcalidrawings"
 }
 
