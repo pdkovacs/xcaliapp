@@ -3,8 +3,6 @@ package s3store
 import (
 	"context"
 	"fmt"
-	"maps"
-	"slices"
 	"strings"
 	"testing"
 
@@ -29,48 +27,49 @@ func (s *s3StoreTest) SetupSuite() {
 	s.NoError(err)
 }
 
+func drawingJSON(title string) string {
+	return fmt.Sprintf(`{"type":"excalidraw","title":%q,"elements":[]}`, title)
+}
+
 func (s *s3StoreTest) TestListDrawings() {
-	inputTitles := []string{
-		"some title",
-		"some other title",
-	}
-	inputContents := []string{
-		"some content",
-		"some other content",
+	drawings := []struct {
+		id    string
+		title string
+	}{
+		{"id-A", "some title"},
+		{"id-B", "some other title"},
 	}
 
-	for index := range inputTitles {
-		contentReader := strings.NewReader(inputContents[index])
-		errPut := s.store.PutDrawing(s.ctx, inputTitles[index], contentReader, "test-user")
+	for _, d := range drawings {
+		errPut := s.store.PutDrawing(s.ctx, d.id, strings.NewReader(drawingJSON(d.title)), "test-user")
 		s.NoError(errPut)
 	}
 
-	drawingList, getTitlesErr := s.store.ListDrawings(s.ctx)
-	s.NoError(getTitlesErr)
-	s.Equal(2, len(drawingList))
+	drawingList, listErr := s.store.ListDrawings(s.ctx)
+	s.NoError(listErr)
 
-	slices.Sort(inputTitles)
-	slices.Sort(slices.Collect(maps.Values(drawingList)))
-	s.Equal(inputTitles, drawingList)
+	expected := map[string]string{
+		"id-A": "some title",
+		"id-B": "some other title",
+	}
+	s.Equal(expected, drawingList)
 }
 
 func (s *s3StoreTest) TestGetDrawing() {
-	inputTitles := []string{
-		"some title",
-		"some other title",
-	}
-	inputContents := []string{
-		"some content",
-		"some other content",
+	drawings := []struct {
+		id    string
+		title string
+	}{
+		{"id-A", "some title"},
+		{"id-B", "some other title"},
 	}
 
-	for index := range inputTitles {
-		contentReader := strings.NewReader(inputContents[index])
-		errPut := s.store.PutDrawing(s.ctx, inputTitles[index], contentReader, "test-user")
+	for _, d := range drawings {
+		errPut := s.store.PutDrawing(s.ctx, d.id, strings.NewReader(drawingJSON(d.title)), "test-user")
 		s.NoError(errPut)
 	}
 
-	content1, getContentErr1 := s.store.GetDrawing(s.ctx, inputTitles[1])
-	s.NoError(getContentErr1)
-	s.Equal(inputContents[1], content1)
+	content, getContentErr := s.store.GetDrawing(s.ctx, drawings[1].id)
+	s.NoError(getContentErr)
+	s.Equal(drawingJSON(drawings[1].title), content)
 }

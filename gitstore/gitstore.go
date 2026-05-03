@@ -3,6 +3,7 @@ package gitstore
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"path"
@@ -11,6 +12,8 @@ import (
 
 	"github.com/rs/zerolog"
 )
+
+var ErrNotImplemented = errors.New("not implemented in gitstore")
 
 type LocalGitRepo struct {
 	blobStore      *local.Git
@@ -101,6 +104,18 @@ func (repo *LocalGitRepo) GetDrawing(ctx context.Context, drawingId string) (str
 		return "", fmt.Errorf("failed to read drawing %s: %w", drawingId, err)
 	}
 	return string(blob), nil
+}
+
+func (repo *LocalGitRepo) ListVersions(ctx context.Context, drawingId string) ([]vcblobstore.BlobVersion, error) {
+	return nil, ErrNotImplemented
+}
+
+func (repo *LocalGitRepo) GetVersion(ctx context.Context, drawingId string, versionID string) (string, error) {
+	return "", ErrNotImplemented
+}
+
+func (repo *LocalGitRepo) RestoreVersion(ctx context.Context, drawingId string, versionID string, modifiedBy string) (string, error) {
+	return "", ErrNotImplemented
 }
 
 func NewLocalGitStore(pathToStore string, pathToDrawings string, logger *zerolog.Logger) (*LocalGitRepo, error) {
