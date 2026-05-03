@@ -3,6 +3,7 @@ package s3store
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -103,10 +104,13 @@ func (store *SessionStore) ServeClientCode(ctx context.Context, path string) (st
 	}
 	response, getObjectErr := store.s3Client.GetObject(ctx, &input)
 
-	if awsErr, ok := getObjectErr.(smithy.APIError); ok && awsErr.ErrorCode() == "NotFound" {
-		return "", ErrNotfound
-	}
 	if getObjectErr != nil {
+		var apiErr smithy.APIError
+		if errors.As(getObjectErr, &apiErr) {
+			if code := apiErr.ErrorCode(); code == "NoSuchKey" || code == "NotFound" {
+				return "", ErrNotfound
+			}
+		}
 		return "", fmt.Errorf("failed to retrieve S3 Object for client code content: %w", getObjectErr)
 	}
 
