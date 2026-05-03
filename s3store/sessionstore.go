@@ -140,7 +140,7 @@ func NewSessionStore(ctx context.Context, bucketName string) (*SessionStore, err
 		fmt.Println(err)
 		return nil, fmt.Errorf("failed to load default configuration: %w", err)
 	}
-	s3Client := s3.NewFromConfig(sdkConfig)
+	s3Client := newS3Client(sdkConfig)
 
 	bucketNameToUse := sessionStoreBucketName
 	if len(bucketName) > 0 {

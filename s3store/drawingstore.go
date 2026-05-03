@@ -198,7 +198,7 @@ func NewDrawingStore(ctx context.Context, bucketName string) (*DrawingStore, err
 		fmt.Println(err)
 		return nil, fmt.Errorf("failed to load default configuration: %w", err)
 	}
-	s3Client := s3.NewFromConfig(sdkConfig)
+	s3Client := newS3Client(sdkConfig)
 
 	bucketNameToUse := drawingStoreBucketName
 	if len(bucketName) > 0 {
