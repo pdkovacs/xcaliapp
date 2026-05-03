@@ -18,6 +18,7 @@ import { useReporters } from "./utils/use-reporters";
 import { XcalidrawContent } from "./features/drawing/drawingAPI";
 import { convertToPlainObject } from "./utils/convert-to-plain-object";
 import { emptyArray } from "./utils/empty-array";
+import { setLocation } from "./utils/set-location";
 
 const darkTheme = createTheme({
 	colorSchemes: {
@@ -113,6 +114,7 @@ const App = () => {
 	}, [savedDrawing.elements]);
 
 	const clear = useCallback(() => {
+		setLocation(null);
 		dispatch(clearCanvas());
 	}, [dispatch, clearCanvas]);
 

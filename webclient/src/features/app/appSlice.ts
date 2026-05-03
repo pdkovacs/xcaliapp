@@ -13,7 +13,7 @@ export const appSlice = createAppSlice({
 	initialState,
 	reducers: create => ({
 		reportError: create.reducer<string>((state, action) => {
-			state.errors = state.errors.concat(action.payload);
+			state.errors.concat(action.payload);
 		})
 	}),
 	selectors: {

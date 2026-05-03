@@ -18,9 +18,8 @@ export interface ManageDrawingsDialogProps {
 
 export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProps) => {
 	const availableRepos = useAppSelector(selectDrawingRepos);
-	const [selectedRepo, setSelectedRepo] = useState<DrawingRepoRef>(availableRepos[0]);
-
 	const drawingListStatus = useAppSelector(selectDrawingListStatus);
+	const [selectedRepo, setSelectedRepo] = useState<DrawingRepoRef>(availableRepos[0]);
 
 	const [workInProgress, setWorkInProgress] = useState(false);
 

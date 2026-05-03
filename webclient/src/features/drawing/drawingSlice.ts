@@ -1,8 +1,9 @@
-import { isNil } from "lodash";
+import { castDraft } from "immer";
 import { createAppSlice } from "../../app/createAppSlice";
 import { emptyArray } from "../../utils/empty-array";
 import type { Drawing, DrawingLists, DrawingRepoRef, FQDrawingId } from "./drawingAPI";
-import { fetchDrawing, fetchDrawingList, createDrawing as createDrawingApi, saveDrawing, fetchDrawingRepositories, fqDrawingIdToString } from "./drawingAPI";
+import { fetchDrawing, fetchDrawingList, createDrawing as createDrawingApi, saveDrawing, fetchDrawingRepositories } from "./drawingAPI";
+import { setLocation } from "../../utils/set-location";
 
 export enum AsyncOperationState {
 	idle = "idle",
@@ -85,20 +86,6 @@ const initialState: DrawingSliceState = {
 	}
 };
 
-const setLocation = (fQDrawingId: FQDrawingId | null) => {
-	if (!isNil(fQDrawingId)) {
-		const drawingId = fqDrawingIdToString(fQDrawingId);
-		const desiredPathname = `/drawings/${drawingId}`;
-		if (window.location.pathname !== desiredPathname) {
-			window.history.pushState({}, drawingId, desiredPathname);
-		}
-	} else {
-		if (window.location.pathname !== "") {
-			window.history.pushState({}, "", "/");
-		}
-	}
-};
-
 // If you are not using async thunks you can use the standalone `createSlice`.
 export const drawingSlice = createAppSlice({
 	name: "drawing",
@@ -150,25 +137,15 @@ export const drawingSlice = createAppSlice({
 					state.drawingInEdit.open.status = AsyncOperationState.inProgress;
 				},
 				fulfilled: (state, action) => {
-					return {
-						...state,
-						drawingInEdit: {
-							...state.drawingInEdit,
-							open: {
-								...state.drawingInEdit.open,
-								status: AsyncOperationState.idle
-							},
-							savedDrawing: {
-								...action.payload,
-								id: action.meta.arg.drawingId,
-								repo: {
-									name: action.meta.arg.repoId,
-									label: state.drawingRepos.value.find(repo => repo.name === action.meta.arg.repoId)?.label ?? "???"
-								}
-							},
-							currentElements: action.payload.elements
+					state.drawingInEdit.open.status = AsyncOperationState.idle;
+					state.drawingInEdit.savedDrawing = castDraft({
+						...action.payload,
+						id: action.meta.arg.drawingId,
+						repo: {
+							name: action.meta.arg.repoId,
+							label: state.drawingRepos.value.find(r => r.name === action.meta.arg.repoId)?.label ?? "???"
 						}
-					};
+					});
 				},
 				rejected: state => {
 					state.drawingInEdit.open.status = AsyncOperationState.failed;
@@ -176,7 +153,6 @@ export const drawingSlice = createAppSlice({
 			}
 		),
 		clearCanvas: create.preparedReducer(() => {
-			setLocation(null);
 			// if (window.location.pathname !== "") {
 			// 	window.history.pushState({}, "", "/");
 			// }
@@ -188,8 +164,7 @@ export const drawingSlice = createAppSlice({
 				...state,
 				drawingInEdit: {
 					...state.drawingInEdit,
-					savedDrawing: emptyDrawing,
-					currentElements: emptyArray
+					savedDrawing: emptyDrawing
 				}
 			};
 		}),
