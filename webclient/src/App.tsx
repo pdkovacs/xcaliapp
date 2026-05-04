@@ -13,8 +13,6 @@ import "@excalidraw/excalidraw/index.css";
 
 import "./App.css";
 import { ManageDrawingsDialog } from "./features/drawing/ManageDrawingsDialog";
-import { selectErrors } from "./features/app/appSlice";
-import { useReporters } from "./utils/use-reporters";
 import { XcalidrawContent } from "./features/drawing/drawingAPI";
 import { convertToPlainObject } from "./utils/convert-to-plain-object";
 import { emptyArray } from "./utils/empty-array";
@@ -51,20 +49,11 @@ const App = () => {
 	const [saveDrawingDialogOpen, setSaveDrawingDialogOpen] = useState(false);
 	const [manageDrawingsDialogOpen, setManageDrawingsDialogOpen] = useState(false);
 
-	const appErrors = useAppSelector(selectErrors);
-	const { reportError } = useReporters();
-
 	const dispatch = useAppDispatch();
 
 	useEffect(() => {
 		dispatch(getDrawingRepositories());
 	}, []);
-
-	useEffect(() => {
-		if (!isEmpty(appErrors)) {
-			reportError(appErrors[0]);
-		}
-	}, [appErrors]);
 
 	useEffect(() => {
 		const drawingId = window.location.pathname.substring("/drawings/".length);

@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { AsyncOperationState, createDrawing, saveDrawingContent, selectDrawingRepos, selectSavedDrawing, selectSaveDrawingStatus } from "./drawingSlice";
 
 import style from "./Drawing.module.css";
-import { useReporters } from "../../utils/use-reporters";
 import { DrawingRepoRef, XcalidrawContent } from "./drawingAPI";
 import { RepositorySelector } from "./RepositorySelector";
 
@@ -25,14 +24,6 @@ export const SaveDrawingDialog = ({ open, onClose, currentContent }: SaveDrawing
 	const [selectedTitle, setSelectedTitle] = useState<string>("");
 
 	const dispatch = useAppDispatch();
-
-	const { reportError } = useReporters();
-
-	useEffect(() => {
-		if (savingStatus === AsyncOperationState.failed) {
-			reportError("Failed to save drawing");
-		}
-	}, [savingStatus]);
 
 	const updateExistingDrawing = selectedTitle === savedDrawing.title;
 

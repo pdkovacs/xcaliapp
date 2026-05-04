@@ -249,3 +249,11 @@ export const {
 	selectSaveDrawingStatus,
 	selectDrawingToEditStatus
 } = drawingSlice.selectors;
+
+export const drawingErrorLabels = {
+	[saveDrawingContent.rejected.type]:     "Failed to save drawing",
+	[createDrawing.rejected.type]:          "Failed to create drawing",
+	[getDrawingContent.rejected.type]:      "Failed to open drawing",
+	[getDrawingRepositories.rejected.type]: "Failed to load repositories",
+	[getDrawingLists.rejected.type]:        "Failed to load drawing list"
+};

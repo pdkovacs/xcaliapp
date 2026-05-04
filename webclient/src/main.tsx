@@ -1,29 +1,32 @@
 import React, { JSX, useEffect } from "react";
 import { createRoot } from "react-dom/client";
-import { Provider } from "react-redux";
+import { Provider, useDispatch } from "react-redux";
+import { Button } from "@mui/material";
 import App from "./App";
-import { store } from "./app/store";
+import { store, type AppDispatch } from "./app/store";
 import "./index.css";
 
 import "@fontsource/roboto/300.css";
 import "@fontsource/roboto/400.css";
 import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
-import { SnackbarProvider } from "notistack";
+import { closeSnackbar, SnackbarProvider, type SnackbarKey } from "notistack";
 import { ErrorBoundary, FallbackProps } from "react-error-boundary";
-import { useReporters } from "./utils/use-reporters";
+import { showNotification } from "./features/notifications/notifications";
+
+const dismissAction = (snackbarId: SnackbarKey) => (
+	<Button color="inherit" onClick={() => closeSnackbar(snackbarId)}>
+		Dismiss
+	</Button>
+);
 
 const ErrorFallback = ({ error }: FallbackProps): JSX.Element | null => {
-
-	const { reportError } = useReporters();
+	const dispatch = useDispatch<AppDispatch>();
 
 	useEffect(() => {
-		if (error instanceof Error) {
-			reportError(error.message);
-		} else {
-			reportError(String(error));
-		}
-	}, [error]);
+		const message = error instanceof Error ? error.message : String(error);
+		dispatch(showNotification({ message, variant: "error", persist: true }));
+	}, [error, dispatch]);
 
 	return null;
 };
@@ -38,6 +41,7 @@ if (container) {
 			<Provider store={store}>
 				<SnackbarProvider
 					maxSnack={3}
+					action={dismissAction}
 				>
 					<ErrorBoundary
 						FallbackComponent={ErrorFallback}

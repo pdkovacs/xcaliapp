@@ -1,42 +1,38 @@
 import type { Action, ThunkAction } from "@reduxjs/toolkit";
 import { combineSlices, configureStore, createListenerMiddleware } from "@reduxjs/toolkit";
 import { setupListeners } from "@reduxjs/toolkit/query";
-import { appSlice } from "../features/app/appSlice";
-import { drawingSlice, getDrawingContent } from "../features/drawing/drawingSlice";
+import { drawingSlice, drawingErrorLabels, getDrawingContent } from "../features/drawing/drawingSlice";
+import { registerNotificationListeners } from "../features/notifications/notifications";
 import { setLocation } from "../utils/set-location";
 
-// `combineSlices` automatically combines the reducers using
-// their `reducerPath`s, therefore we no longer need to call `combineReducers`.
-const rootReducer = combineSlices(appSlice, drawingSlice);
-// Infer the `RootState` type from the root reducer
+const rootReducer = combineSlices(drawingSlice);
 export type RootState = ReturnType<typeof rootReducer>;
 
 const listenerMiddleware = createListenerMiddleware();
+
 listenerMiddleware.startListening({
 	actionCreator: getDrawingContent.fulfilled,
 	effect: (action) => setLocation(action.meta.arg)
 });
 
+registerNotificationListeners(listenerMiddleware, {
+	...drawingErrorLabels
+});
 
-// The store setup is wrapped in `makeStore` to allow reuse
-// when setting up tests that need the same store config
+
 export const makeStore = (preloadedState?: Partial<RootState>) => {
 	const store = configureStore({
 		reducer: rootReducer,
 		middleware: gDM => gDM().prepend(listenerMiddleware.middleware),
 		preloadedState
 	});
-	// configure listeners using the provided defaults
-	// optional, but required for `refetchOnFocus`/`refetchOnReconnect` behaviors
 	setupListeners(store.dispatch);
 	return store;
 };
 
 export const store = makeStore();
 
-// Infer the type of `store`
 export type AppStore = typeof store;
-// Infer the `AppDispatch` type from the store itself
 export type AppDispatch = AppStore["dispatch"];
 export type AppThunk<ThunkReturnType = void> = ThunkAction<
 	ThunkReturnType,
