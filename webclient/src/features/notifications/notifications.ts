@@ -9,17 +9,25 @@ export type NotificationPayload = {
 	persist?: boolean;
 };
 
+export type ErrorLabelResolver = (action: Action) => string | undefined;
+
 export const showNotification = createAction<NotificationPayload>("notifications/show");
 
 export const registerNotificationListeners = (
 	middleware: ListenerMiddleware,
-	errorLabels: Record<string, string>
+	resolveErrorLabel: ErrorLabelResolver
 ) => {
 	middleware.startListening({
 		matcher: isRejected,
 		effect: (action: Action, api) => {
-			const message = errorLabels[action.type];
-			if (!message) return;
+			const meta = (action as { meta?: { aborted?: boolean; condition?: boolean } }).meta;
+			if (meta?.aborted || meta?.condition) {
+				return;
+			}
+			const message = resolveErrorLabel(action);
+			if (!message) {
+				return;
+			}
 			api.dispatch(showNotification({ message, variant: "error", persist: true }));
 		}
 	});

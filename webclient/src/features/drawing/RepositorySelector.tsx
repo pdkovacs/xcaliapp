@@ -1,6 +1,6 @@
 import React from "react";
 import { FormControl, InputLabel, MenuItem, Select } from "@mui/material";
-import { DrawingRepoRef } from "./drawingAPI";
+import { DrawingRepoRef } from "./drawingApi";
 
 import style from "./RepositorySelector.module.css";
 

@@ -64,10 +64,12 @@ export default [
 	{
 		files: ["**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
 		rules: {
+			"curly": ["error", "all"],
 			"@stylistic/indent": ["error", "tab"],
 			"@stylistic/quotes": ["error", "double"],
 			"@stylistic/semi": ["error", "always"],
 			"@stylistic/comma-dangle": ["error"],
+			"@stylistic/brace-style": ["error"],
 			"@stylistic/member-delimiter-style": ["error", {
 				multiline: {
 					delimiter: "semi",

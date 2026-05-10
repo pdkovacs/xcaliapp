@@ -1,29 +1,41 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, Menu, MenuItem, TextField } from "@mui/material";
-import { useAppDispatch, useAppSelector } from "../../app/hooks";
-import { AsyncOperationState, getDrawingLists, selectDrawingLists, selectDrawingListStatus, selectDrawingRepos } from "./drawingSlice";
 
 import style from "./ManageDrawingsDialog.module.css";
 import { isEmpty } from "lodash";
 import classNames from "classnames";
 import { ErrorDialog, ErrorDialogData } from "../../utils/ErrorDialog";
-import { deleteDrawings, Drawing, DrawingRepoItem, DrawingRepoRef, fetchDrawing, saveDrawing } from "./drawingAPI";
+import {
+	useDeleteDrawingsMutation,
+	useGetDrawingListsQuery,
+	useGetDrawingRepositoriesQuery,
+	useLazyGetDrawingQuery,
+	useSaveDrawingMutation,
+	type DrawingRepoItem,
+	type DrawingRepoRef
+} from "./drawingApi";
 import { emptyArray } from "../../utils/empty-array";
 import { RepositorySelector } from "./RepositorySelector";
+import { GatedGlobalResourceLoadingDialogProps, LoadingBackdrop } from "../../LoadingBackdrop";
 
 export interface ManageDrawingsDialogProps {
 	readonly open: boolean;
+	readonly availableRepos: DrawingRepoRef[];
 	readonly onClose: () => void;
 }
 
-export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProps) => {
-	const availableRepos = useAppSelector(selectDrawingRepos);
-	const drawingListStatus = useAppSelector(selectDrawingListStatus);
+const GatedManageDrawingsDialog = ({ open, availableRepos, onClose }: ManageDrawingsDialogProps) => {
+	const { data: drawingLists, isFetching, isError } = useGetDrawingListsQuery(undefined, {
+		skip: !open,
+		refetchOnMountOrArgChange: true
+	});
 	const [selectedRepo, setSelectedRepo] = useState<DrawingRepoRef>(availableRepos[0]);
 
-	const [workInProgress, setWorkInProgress] = useState(false);
+	const [getDrawingTrigger] = useLazyGetDrawingQuery();
+	const [saveDrawingMutation] = useSaveDrawingMutation();
+	const [deleteDrawingsMutation] = useDeleteDrawingsMutation();
 
-	const dispatch = useAppDispatch();
+	const [workInProgress, setWorkInProgress] = useState(false);
 
 	const [selectedDrawings, setSelectedDrawings] = useState<DrawingRepoItem[]>(emptyArray);
 
@@ -32,16 +44,10 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 	const [actionExecutionError, setActionExecutionError] = useState<ErrorDialogData | null>(null);
 
 	useEffect(() => {
-		if (open) {
-			dispatch(getDrawingLists());
-		} else {
+		if (!open) {
 			setSelectedDrawings(emptyArray);
 		}
 	}, [open]);
-
-	useEffect(() => {
-		setSelectedRepo(availableRepos[0]);
-	}, availableRepos);
 
 	const enabledActions = useMemo(() => {
 		if (isEmpty(selectedDrawings)) {
@@ -72,19 +78,21 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 					if (confirmed !== false) {
 						const drawingId = selectedDrawings[0].id;
 						const newTitle = confirmed as string;
-						const content = await fetchDrawing({ repoId: selectedRepo.name, drawingId });
-						const drawing: Drawing = { repo: selectedRepo, id: drawingId, title: newTitle, elements: content.elements };
-						await saveDrawing(drawing);
+						const content = await getDrawingTrigger({ repoId: selectedRepo.name, drawingId }).unwrap();
+						await saveDrawingMutation({
+							repo: selectedRepo,
+							id: drawingId,
+							title: newTitle,
+							elements: content.elements
+						}).unwrap();
 						setSelectedDrawings(emptyArray);
-						dispatch(getDrawingLists());
 					}
 					break;
 				case Action.DELETE:
 					setDeleteDrawingsDialogOpen(false);
 					if (confirmed) {
-						await deleteDrawings(selectedDrawings.map(drawing => drawing.id));
+						await deleteDrawingsMutation(selectedDrawings.map(drawing => drawing.id)).unwrap();
 						setSelectedDrawings(emptyArray);
-						dispatch(getDrawingLists());
 					}
 					break;
 			}
@@ -117,16 +125,17 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 				{workInProgress && <LinearProgress />}
 				<div className={classNames(style.dialogContent, { [style.workInProgress]: workInProgress })}>
 					<RepositorySelector
-						availableRepos={availableRepos}
+						availableRepos={[...availableRepos]}
 						currentSelection={selectedRepo}
 						requestSelectionChange={setSelectedRepo}
 					/>
 					{
-						drawingListStatus === AsyncOperationState.inProgress
+						isFetching
 							? <CircularProgress />
-							: drawingListStatus === AsyncOperationState.failed
+							: isError
 								? <Alert severity="error">Failed to load drawing list</Alert>
 								: <ManageDrawingsPanel
+									drawingLists={drawingLists}
 									selectedRepo={selectedRepo}
 									selectedDrawings={selectedDrawings}
 									onDrawingSelectionChanged={(drawing, checked) => handleDrawingSelectionChange(drawing, checked)}
@@ -146,18 +155,19 @@ export const ManageDrawingsDialog = ({ open, onClose }: ManageDrawingsDialogProp
 };
 
 interface ManageDrawingsPanelProps {
+	readonly drawingLists: ReturnType<typeof useGetDrawingListsQuery>["data"];
 	readonly selectedRepo: DrawingRepoRef;
 	readonly selectedDrawings: DrawingRepoItem[];
 	readonly onDrawingSelectionChanged: (drawing: DrawingRepoItem, checked: boolean) => void;
 }
 
-const ManageDrawingsPanel = ({ selectedRepo, selectedDrawings, onDrawingSelectionChanged }: ManageDrawingsPanelProps) => {
-	const drawingLists = useAppSelector(selectDrawingLists);
+const ManageDrawingsPanel = ({ drawingLists, selectedRepo, selectedDrawings, onDrawingSelectionChanged }: ManageDrawingsPanelProps) => {
+	const items: DrawingRepoItem[] = drawingLists?.[selectedRepo?.name]?.items ?? emptyArray;
 
 	return <div className={classNames(style.wideDialogContent, style.overflowingDialogContent, style.drawingListContainer)}>
 		<div>
 			{
-				drawingLists[selectedRepo.name].items.map(drawing => {
+				items.map(drawing => {
 					return <div className={style.drawingListItem} key={drawing.id}>
 						<Checkbox checked={selectedDrawings.includes(drawing)} onChange={change => onDrawingSelectionChanged(drawing, change.target.checked)} />
 						<div>{drawing.title}</div>
@@ -262,4 +272,15 @@ const DeleteDrawingsDialog = ({ open, drawings, onClose }: DeleteDrawingsDialogP
 			<Button color="error" onClick={() => onClose(true)}>Delete</Button>
 		</DialogActions>
 	</Dialog>;
+};
+
+export const ManageDrawingsDialog = ({ open, onClose }: GatedGlobalResourceLoadingDialogProps) => {
+	const { data: availableRepos } = useGetDrawingRepositoriesQuery();
+	if (!open) {
+		return null;
+	}
+	if (!availableRepos) {
+		return <LoadingBackdrop open onCancel={onClose} />;
+	}
+	return <GatedManageDrawingsDialog open availableRepos={availableRepos} onClose={onClose} />;
 };

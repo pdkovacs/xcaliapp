@@ -1,9 +1,9 @@
 import { isNil } from "lodash";
-import { FQDrawingId, fqDrawingIdToString } from "../features/drawing/drawingAPI";
+import { QualifiedDrawingId, qualifiedDrawingIdToString } from "../features/drawing/drawingApi";
 
-export const setLocation = (fQDrawingId: FQDrawingId | null) => {
-	if (!isNil(fQDrawingId)) {
-		const drawingId = fqDrawingIdToString(fQDrawingId);
+export const setLocation = (qualifiedDrawingId: QualifiedDrawingId | null) => {
+	if (!isNil(qualifiedDrawingId)) {
+		const drawingId = qualifiedDrawingIdToString(qualifiedDrawingId);
 		const desiredPathname = `/drawings/${drawingId}`;
 		if (window.location.pathname !== desiredPathname) {
 			window.history.pushState({}, drawingId, desiredPathname);

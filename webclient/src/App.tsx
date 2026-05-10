@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { isEmpty, isEqual, isNil } from "lodash";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createTheme, CssBaseline, LinearProgress, ThemeProvider, useColorScheme, useMediaQuery } from "@mui/material";
@@ -6,14 +6,18 @@ import { Excalidraw, MainMenu, THEME } from "@excalidraw/excalidraw";
 import { OpenDrawingDialog } from "./features/drawing/OpenDrawing";
 import { AppState, type ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { useAppDispatch, useAppSelector } from "./app/hooks";
-import { selectSavedDrawing, selectDrawingToEditStatus, AsyncOperationState, getDrawingContent, clearCanvas, selectDrawingRepos, getDrawingRepositories } from "./features/drawing/drawingSlice";
+import { clearCanvas, selectSavedDrawing } from "./features/drawing/drawingSlice";
+import {
+	useGetDrawingRepositoriesQuery,
+	useLazyGetDrawingQuery,
+	type XcalidrawContent
+} from "./features/drawing/drawingApi";
 import { SaveDrawingDialog } from "./features/drawing/SaveDrawing";
 
 import "@excalidraw/excalidraw/index.css";
 
 import "./App.css";
 import { ManageDrawingsDialog } from "./features/drawing/ManageDrawingsDialog";
-import { XcalidrawContent } from "./features/drawing/drawingAPI";
 import { convertToPlainObject } from "./utils/convert-to-plain-object";
 import { emptyArray } from "./utils/empty-array";
 import { setLocation } from "./utils/set-location";
@@ -34,7 +38,8 @@ const App = () => {
 
 	const prefersDarkMode = useMediaQuery("(prefers-color-scheme: dark)");
 
-	const drawingRepositories = useAppSelector(selectDrawingRepos);
+	const { data: drawingRepositories = emptyArray } = useGetDrawingRepositoriesQuery();
+	const [triggerGetDrawing, { isFetching: loadingDrawing }] = useLazyGetDrawingQuery();
 
 	const { setMode: setMuiColorScehemeMode } = useColorScheme();
 
@@ -42,18 +47,16 @@ const App = () => {
 	const excalidrawAPIUnsubscribe = useRef<(() => void) | null>(null);
 	const excalidrawAppStateRef = useRef<AppState | null>(null);
 
-	const currentDrawingStatus = useAppSelector(selectDrawingToEditStatus);
 	const savedDrawing = useAppSelector(selectSavedDrawing);
 	const [currentContent, setCurrentContent] = useState<XcalidrawContent>(emptyArray);
+
 	const [openDrawingDialogOpen, setOpenDrawingDialogOpen] = useState(false);
-	const [saveDrawingDialogOpen, setSaveDrawingDialogOpen] = useState(false);
 	const [manageDrawingsDialogOpen, setManageDrawingsDialogOpen] = useState(false);
 
-	const dispatch = useAppDispatch();
+	const [saveDrawingDialogOpen, setSaveDrawingDialogOpen] = useState(false);
 
-	useEffect(() => {
-		dispatch(getDrawingRepositories());
-	}, []);
+
+	const dispatch = useAppDispatch();
 
 	useEffect(() => {
 		const drawingId = window.location.pathname.substring("/drawings/".length);
@@ -61,7 +64,7 @@ const App = () => {
 			return;
 		}
 		const idParts = drawingId.split("-");
-		dispatch(getDrawingContent({ repoId: idParts[0], drawingId: idParts[1] }));
+		triggerGetDrawing({ repoId: idParts[0], drawingId: idParts[1] });
 	}, [drawingRepositories, window.location]);
 
 	useEffect(() => {
@@ -98,8 +101,7 @@ const App = () => {
 	}, [savedDrawing, currentContent]);
 
 	const excalidrawElements = useMemo(() => {
-		const hasSavedContent = !isNil(savedDrawing.elements) && !isEmpty(savedDrawing.elements);
-		return hasSavedContent ? savedDrawing.elements : emptyArray;
+		return !isEmpty(savedDrawing.elements) ? savedDrawing.elements : emptyArray;
 	}, [savedDrawing.elements]);
 
 	const clear = useCallback(() => {
@@ -115,7 +117,7 @@ const App = () => {
 				<div className="document-title">{fullTitle}</div>
 				<div>
 					{
-						currentDrawingStatus === AsyncOperationState.inProgress && <LinearProgress sx={{ marginTop: "-4px" }} />
+						loadingDrawing && <LinearProgress sx={{ marginTop: "-4px" }} />
 					}
 					<div className="xcali-area">
 						<Excalidraw
@@ -149,9 +151,11 @@ const App = () => {
 							</MainMenu>
 						</Excalidraw>
 					</div>
+
 					<OpenDrawingDialog open={openDrawingDialogOpen} onClose={() => setOpenDrawingDialogOpen(false)} />
 					<SaveDrawingDialog open={saveDrawingDialogOpen} onClose={() => setSaveDrawingDialogOpen(false)} currentContent={currentContent} />
 					<ManageDrawingsDialog open={manageDrawingsDialogOpen} onClose={() => setManageDrawingsDialogOpen(false)} />
+
 				</div>
 			</div>
 

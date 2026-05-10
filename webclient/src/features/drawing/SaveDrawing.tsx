@@ -2,11 +2,18 @@ import React from "react";
 import { Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { useEffect, useState } from "react";
-import { AsyncOperationState, createDrawing, saveDrawingContent, selectDrawingRepos, selectSavedDrawing, selectSaveDrawingStatus } from "./drawingSlice";
+import { selectSavedDrawing, setSavedDrawing } from "./drawingSlice";
+import {
+	useCreateDrawingMutation,
+	useGetDrawingRepositoriesQuery,
+	useSaveDrawingMutation,
+	type DrawingRepoRef,
+	type XcalidrawContent
+} from "./drawingApi";
 
 import style from "./Drawing.module.css";
-import { DrawingRepoRef, XcalidrawContent } from "./drawingAPI";
 import { RepositorySelector } from "./RepositorySelector";
+import { emptyArray } from "../../utils/empty-array";
 
 interface SaveDrawingDialogProps {
 	readonly open: boolean;
@@ -16,29 +23,33 @@ interface SaveDrawingDialogProps {
 
 export const SaveDrawingDialog = ({ open, onClose, currentContent }: SaveDrawingDialogProps) => {
 
-	const availableRepos = useAppSelector(selectDrawingRepos);
+	const { data: availableRepos = emptyArray } = useGetDrawingRepositoriesQuery();
 	const savedDrawing = useAppSelector(selectSavedDrawing);
-	const savingStatus = useAppSelector(selectSaveDrawingStatus);
+	const [createDrawing, { isLoading: isCreating }] = useCreateDrawingMutation();
+	const [saveDrawing, { isLoading: isSaving }] = useSaveDrawingMutation();
+	const inProgress = isCreating || isSaving;
 
 	const [selectedRepo, setSelectedRepo] = useState<DrawingRepoRef>(savedDrawing.repo);
 	const [selectedTitle, setSelectedTitle] = useState<string>("");
 
-	const dispatch = useAppDispatch();
-
 	const updateExistingDrawing = selectedTitle === savedDrawing.title;
 
-	const handleOk = () => {
+	const dispatch = useAppDispatch();
+
+	const handleOk = async () => {
 		if (updateExistingDrawing) {
-			dispatch(saveDrawingContent({
+			const updated = {
 				...savedDrawing,
 				elements: currentContent
-			}));
+			};
+			await saveDrawing(updated).unwrap();
+			dispatch(setSavedDrawing(updated));
 		} else {
-			dispatch(createDrawing({
+			createDrawing({
 				repo: selectedRepo,
 				title: selectedTitle,
 				elements: currentContent
-			}));
+			});
 		}
 		onClose();
 	};
@@ -54,7 +65,7 @@ export const SaveDrawingDialog = ({ open, onClose, currentContent }: SaveDrawing
 		setSelectedTitle(savedDrawing.title);
 	}, [savedDrawing]);
 
-	const repoToShowSelected = selectedRepo || availableRepos[0] || "";
+	const repoToShowSelected = selectedRepo || availableRepos[0];
 
 	return (
 		<Dialog
@@ -62,25 +73,22 @@ export const SaveDrawingDialog = ({ open, onClose, currentContent }: SaveDrawing
 			onClose={onClose}
 		>
 			<DialogTitle>Save drawing</DialogTitle>
-			<DialogContent>{
+			<DialogContent>
 				<div>{
-					savingStatus === AsyncOperationState.inProgress
+					inProgress
 						? <div className={style.fetchInProgress}>
 							<CircularProgress />
 						</div>
-						: savingStatus === AsyncOperationState.idle || savingStatus === AsyncOperationState.failed
-							? <div className={style.openSaveDrawingDialogContent}	>
-								<RepositorySelector
-									availableRepos={availableRepos}
-									currentSelection={repoToShowSelected}
-									disabled={updateExistingDrawing}
-									requestSelectionChange={setSelectedRepo}
-								/>
-								<TitleSelector title={titleToOffer} onChange={title => setSelectedTitle(title)} />
-							</div>
-							: null
+						: <div className={style.openSaveDrawingDialogContent}>
+							<RepositorySelector
+								availableRepos={[...availableRepos]}
+								currentSelection={repoToShowSelected}
+								disabled={updateExistingDrawing}
+								requestSelectionChange={setSelectedRepo}
+							/>
+							<TitleSelector title={titleToOffer} onChange={title => setSelectedTitle(title)} />
+						</div>
 				}</div>
-			}
 			</DialogContent>
 			<DialogActions>
 				<Button onClick={() => {

@@ -1,9 +1,9 @@
 import React, { JSX, useEffect } from "react";
 import { createRoot } from "react-dom/client";
-import { Provider, useDispatch } from "react-redux";
+import { Provider } from "react-redux";
 import { Button } from "@mui/material";
 import App from "./App";
-import { store, type AppDispatch } from "./app/store";
+import { store } from "./app/store";
 import "./index.css";
 
 import "@fontsource/roboto/300.css";
@@ -13,6 +13,7 @@ import "@fontsource/roboto/700.css";
 import { closeSnackbar, SnackbarProvider, type SnackbarKey } from "notistack";
 import { ErrorBoundary, FallbackProps } from "react-error-boundary";
 import { showNotification } from "./features/notifications/notifications";
+import { useAppDispatch } from "./app/hooks";
 
 const dismissAction = (snackbarId: SnackbarKey) => (
 	<Button color="inherit" onClick={() => closeSnackbar(snackbarId)}>
@@ -21,7 +22,7 @@ const dismissAction = (snackbarId: SnackbarKey) => (
 );
 
 const ErrorFallback = ({ error }: FallbackProps): JSX.Element | null => {
-	const dispatch = useDispatch<AppDispatch>();
+	const dispatch = useAppDispatch();
 
 	useEffect(() => {
 		const message = error instanceof Error ? error.message : String(error);
