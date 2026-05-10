@@ -3,7 +3,6 @@ import { Alert, Button, CircularProgress, Dialog, DialogActions, DialogContent, 
 import { useEffect, useState } from "react";
 import {
 	useGetDrawingListsQuery,
-	useGetDrawingRepositoriesQuery,
 	useLazyGetDrawingQuery,
 	type DrawingLists,
 	type DrawingRepoItem,
@@ -13,7 +12,6 @@ import { isEmpty, isNil } from "lodash";
 import { RepositorySelector } from "./RepositorySelector";
 
 import style from "./Drawing.module.css";
-import { GatedGlobalResourceLoadingDialogProps, LoadingBackdrop } from "../../LoadingBackdrop";
 
 interface OpenDrawingDialogProps {
 	readonly open: boolean;
@@ -21,7 +19,14 @@ interface OpenDrawingDialogProps {
 	readonly onClose: () => void;
 }
 
-const GatedOpenDrawingDialog = ({ open, availableRepos, onClose }: OpenDrawingDialogProps) => {
+export const OpenDrawingDialog = ({ open, availableRepos, onClose }: OpenDrawingDialogProps) => {
+	if (!open) {
+		return null;
+	}
+	return <OpenDrawingDialogContent open availableRepos={availableRepos} onClose={onClose} />;
+};
+
+const OpenDrawingDialogContent = ({ open, availableRepos, onClose }: OpenDrawingDialogProps) => {
 
 	const { data: drawingLists, isFetching, isError } = useGetDrawingListsQuery(undefined, {
 		skip: !open,
@@ -129,13 +134,3 @@ const DrawingSelector = ({ repos, drawingLists, selection, onChange }: DrawingSe
 	</div >;
 };
 
-export const OpenDrawingDialog = ({ open, onClose }: GatedGlobalResourceLoadingDialogProps) => {
-	const { data: availableRepos } = useGetDrawingRepositoriesQuery();
-	if (!open) {
-		return null;
-	}
-	if (!availableRepos) {
-		return <LoadingBackdrop open onCancel={onClose} />;
-	}
-	return <GatedOpenDrawingDialog open availableRepos={availableRepos} onClose={onClose} />;
-};

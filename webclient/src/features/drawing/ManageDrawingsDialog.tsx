@@ -8,7 +8,6 @@ import { ErrorDialog, ErrorDialogData } from "../../utils/ErrorDialog";
 import {
 	useDeleteDrawingsMutation,
 	useGetDrawingListsQuery,
-	useGetDrawingRepositoriesQuery,
 	useLazyGetDrawingQuery,
 	useSaveDrawingMutation,
 	type DrawingRepoItem,
@@ -16,7 +15,6 @@ import {
 } from "./drawingApi";
 import { emptyArray } from "../../utils/empty-array";
 import { RepositorySelector } from "./RepositorySelector";
-import { GatedGlobalResourceLoadingDialogProps, LoadingBackdrop } from "../../LoadingBackdrop";
 
 export interface ManageDrawingsDialogProps {
 	readonly open: boolean;
@@ -24,7 +22,14 @@ export interface ManageDrawingsDialogProps {
 	readonly onClose: () => void;
 }
 
-const GatedManageDrawingsDialog = ({ open, availableRepos, onClose }: ManageDrawingsDialogProps) => {
+export const ManageDrawingsDialog = ({ open, availableRepos, onClose }: ManageDrawingsDialogProps) => {
+	if (!open) {
+		return null;
+	}
+	return <ManageDrawingsDialogContent open availableRepos={availableRepos} onClose={onClose} />;
+};
+
+const ManageDrawingsDialogContent = ({ open, availableRepos, onClose }: ManageDrawingsDialogProps) => {
 	const { data: drawingLists, isFetching, isError } = useGetDrawingListsQuery(undefined, {
 		skip: !open,
 		refetchOnMountOrArgChange: true
@@ -274,13 +279,3 @@ const DeleteDrawingsDialog = ({ open, drawings, onClose }: DeleteDrawingsDialogP
 	</Dialog>;
 };
 
-export const ManageDrawingsDialog = ({ open, onClose }: GatedGlobalResourceLoadingDialogProps) => {
-	const { data: availableRepos } = useGetDrawingRepositoriesQuery();
-	if (!open) {
-		return null;
-	}
-	if (!availableRepos) {
-		return <LoadingBackdrop open onCancel={onClose} />;
-	}
-	return <GatedManageDrawingsDialog open availableRepos={availableRepos} onClose={onClose} />;
-};

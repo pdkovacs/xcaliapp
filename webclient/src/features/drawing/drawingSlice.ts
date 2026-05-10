@@ -3,7 +3,7 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { emptyArray } from "../../utils/empty-array";
 import type { Drawing } from "./drawingApi";
 
-const emptyDrawing: Drawing = {
+export const emptyDrawing: Drawing = {
 	id: "",
 	title: "",
 	elements: emptyArray,
@@ -11,7 +11,7 @@ const emptyDrawing: Drawing = {
 		name: "",
 		label: ""
 	}
-};
+} as const;
 
 export interface DrawingSliceState {
 	savedDrawing: Drawing;

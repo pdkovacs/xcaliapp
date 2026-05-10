@@ -19,9 +19,3 @@ export const LoadingBackdrop = ({ open, onCancel }: { open: boolean; onCancel: (
 		</Backdrop>
 	);
 };
-
-// TODO: this smells like a pre-mature abstraction
-export interface GatedGlobalResourceLoadingDialogProps {
-	readonly open: boolean;
-	readonly onClose: () => void;
-}

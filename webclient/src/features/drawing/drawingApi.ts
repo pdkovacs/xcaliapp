@@ -20,7 +20,7 @@ export interface QualifiedDrawingId {
 }
 
 export const qualifiedDrawingIdToString = (qualifiedDrawingId: QualifiedDrawingId): string =>
-	`${qualifiedDrawingId.repoId}-${qualifiedDrawingId.drawingId}`;
+	`${qualifiedDrawingId.repoId}/${qualifiedDrawingId.drawingId}`;
 
 export interface Drawing extends XcalidrawDocument {
 	readonly id?: string;
@@ -63,7 +63,7 @@ export const drawingApi = createApi({
 		}),
 		createDrawing: builder.mutation<string, Drawing>({
 			query: drawing => ({
-				url: "drawing",
+				url: `drawing/${drawing.repo.name}`,
 				method: "POST",
 				body: {
 					content: JSON.stringify(
@@ -77,7 +77,7 @@ export const drawingApi = createApi({
 		}),
 		saveDrawing: builder.mutation<string, Drawing>({
 			query: drawing => ({
-				url: `drawing/${drawing.repo.name}-${drawing.id}`,
+				url: `drawing/${qualifiedDrawingIdToString({ repoId: drawing.repo.name, drawingId: drawing.id! })}`,
 				method: "PUT",
 				body: { content: JSON.stringify(drawing, null, "\t") }
 			}),

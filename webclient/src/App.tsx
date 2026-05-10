@@ -21,6 +21,7 @@ import { ManageDrawingsDialog } from "./features/drawing/ManageDrawingsDialog";
 import { convertToPlainObject } from "./utils/convert-to-plain-object";
 import { emptyArray } from "./utils/empty-array";
 import { setLocation } from "./utils/set-location";
+import { LoadingBackdrop } from "./LoadingBackdrop";
 
 const darkTheme = createTheme({
 	colorSchemes: {
@@ -38,7 +39,7 @@ const App = () => {
 
 	const prefersDarkMode = useMediaQuery("(prefers-color-scheme: dark)");
 
-	const { data: drawingRepositories = emptyArray } = useGetDrawingRepositoriesQuery();
+	const { data: drawingRepositories } = useGetDrawingRepositoriesQuery();
 	const [triggerGetDrawing, { isFetching: loadingDrawing }] = useLazyGetDrawingQuery();
 
 	const { setMode: setMuiColorScehemeMode } = useColorScheme();
@@ -60,10 +61,10 @@ const App = () => {
 
 	useEffect(() => {
 		const drawingId = window.location.pathname.substring("/drawings/".length);
-		if (isEmpty(drawingRepositories) || isEmpty(drawingId) || isNil(savedDrawing.id) || drawingId === savedDrawing.id) {
+		if (!drawingRepositories || isEmpty(drawingRepositories) || isEmpty(drawingId) || isNil(savedDrawing.id) || drawingId === savedDrawing.id) {
 			return;
 		}
-		const idParts = drawingId.split("-");
+		const idParts = drawingId.split("/");
 		triggerGetDrawing({ repoId: idParts[0], drawingId: idParts[1] });
 	}, [drawingRepositories, window.location]);
 
@@ -152,9 +153,14 @@ const App = () => {
 						</Excalidraw>
 					</div>
 
-					<OpenDrawingDialog open={openDrawingDialogOpen} onClose={() => setOpenDrawingDialogOpen(false)} />
-					<SaveDrawingDialog open={saveDrawingDialogOpen} onClose={() => setSaveDrawingDialogOpen(false)} currentContent={currentContent} />
-					<ManageDrawingsDialog open={manageDrawingsDialogOpen} onClose={() => setManageDrawingsDialogOpen(false)} />
+					{drawingRepositories && (
+						<>
+							<OpenDrawingDialog open={openDrawingDialogOpen} availableRepos={drawingRepositories} onClose={() => setOpenDrawingDialogOpen(false)} />
+							<SaveDrawingDialog open={saveDrawingDialogOpen} availableRepos={drawingRepositories} onClose={() => setSaveDrawingDialogOpen(false)} currentContent={currentContent} />
+							<ManageDrawingsDialog open={manageDrawingsDialogOpen} availableRepos={drawingRepositories} onClose={() => setManageDrawingsDialogOpen(false)} />
+						</>
+					)}
+					<LoadingBackdrop open={!drawingRepositories} onCancel={() => { }} />
 
 				</div>
 			</div>

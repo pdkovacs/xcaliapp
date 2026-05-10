@@ -2,10 +2,9 @@ import React from "react";
 import { Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { useEffect, useState } from "react";
-import { selectSavedDrawing, setSavedDrawing } from "./drawingSlice";
+import { emptyDrawing, selectSavedDrawing, setSavedDrawing } from "./drawingSlice";
 import {
 	useCreateDrawingMutation,
-	useGetDrawingRepositoriesQuery,
 	useSaveDrawingMutation,
 	type DrawingRepoRef,
 	type XcalidrawContent
@@ -13,23 +12,29 @@ import {
 
 import style from "./Drawing.module.css";
 import { RepositorySelector } from "./RepositorySelector";
-import { emptyArray } from "../../utils/empty-array";
 
 interface SaveDrawingDialogProps {
 	readonly open: boolean;
+	readonly availableRepos: DrawingRepoRef[];
 	readonly onClose: () => void;
 	readonly currentContent: XcalidrawContent;
 }
 
-export const SaveDrawingDialog = ({ open, onClose, currentContent }: SaveDrawingDialogProps) => {
+export const SaveDrawingDialog = ({ open, availableRepos, onClose, currentContent }: SaveDrawingDialogProps) => {
+	if (!open) {
+		return null;
+	}
+	return <SaveDrawingDialogContent open availableRepos={availableRepos} onClose={onClose} currentContent={currentContent} />;
+};
 
-	const { data: availableRepos = emptyArray } = useGetDrawingRepositoriesQuery();
+const SaveDrawingDialogContent = ({ open, availableRepos, onClose, currentContent }: SaveDrawingDialogProps) => {
+
 	const savedDrawing = useAppSelector(selectSavedDrawing);
 	const [createDrawing, { isLoading: isCreating }] = useCreateDrawingMutation();
 	const [saveDrawing, { isLoading: isSaving }] = useSaveDrawingMutation();
 	const inProgress = isCreating || isSaving;
 
-	const [selectedRepo, setSelectedRepo] = useState<DrawingRepoRef>(savedDrawing.repo);
+	const [selectedRepo, setSelectedRepo] = useState<DrawingRepoRef>(availableRepos[0]);
 	const [selectedTitle, setSelectedTitle] = useState<string>("");
 
 	const updateExistingDrawing = selectedTitle === savedDrawing.title;
@@ -61,11 +66,15 @@ export const SaveDrawingDialog = ({ open, onClose, currentContent }: SaveDrawing
 	}, [titleToOffer]);
 
 	useEffect(() => {
-		setSelectedRepo(savedDrawing.repo);
-		setSelectedTitle(savedDrawing.title);
-	}, [savedDrawing]);
+		if (savedDrawing === emptyDrawing) {
+			setSelectedRepo(availableRepos[0]);
+			setSelectedTitle("");
+		} else {
+			setSelectedRepo(savedDrawing.repo);
+			setSelectedTitle(savedDrawing.title);
+		}
+	}, [savedDrawing, availableRepos]);
 
-	const repoToShowSelected = selectedRepo || availableRepos[0];
 
 	return (
 		<Dialog
@@ -82,7 +91,7 @@ export const SaveDrawingDialog = ({ open, onClose, currentContent }: SaveDrawing
 						: <div className={style.openSaveDrawingDialogContent}>
 							<RepositorySelector
 								availableRepos={[...availableRepos]}
-								currentSelection={repoToShowSelected}
+								currentSelection={selectedRepo}
 								disabled={updateExistingDrawing}
 								requestSelectionChange={setSelectedRepo}
 							/>
@@ -111,3 +120,4 @@ const TitleSelector = ({ title, onChange }: TitleSelectorProps) => {
 		<TextField label="Title" size="small" sx={{ width: "100%" }} onChange={event => onChange(event.target.value)} value={title} />
 	);
 };
+

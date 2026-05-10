@@ -1,4 +1,4 @@
-import type { Action, ThunkAction } from "@reduxjs/toolkit";
+import type { Action, Middleware, ThunkAction } from "@reduxjs/toolkit";
 import { combineSlices, configureStore, createListenerMiddleware } from "@reduxjs/toolkit";
 import { setupListeners } from "@reduxjs/toolkit/query";
 import { drawingSlice, setSavedDrawing } from "../features/drawing/drawingSlice";
@@ -11,6 +11,17 @@ const rootReducer = combineSlices(drawingSlice, drawingApi);
 export type RootState = ReturnType<typeof rootReducer>;
 
 const listenerMiddleware = createListenerMiddleware();
+
+const loggerMiddleware: Middleware = store => next => action => {
+	const a = action as Action;
+	console.groupCollapsed(`%credux%c ${a.type}`, "color:#764abc;font-weight:bold", "color:inherit");
+	console.log("prev state", store.getState());
+	console.log("action", action);
+	const result = next(action);
+	console.log("next state", store.getState());
+	console.groupEnd();
+	return result;
+};
 
 listenerMiddleware.startListening({
 	matcher: drawingApi.endpoints.getDrawing.matchFulfilled,
@@ -43,7 +54,10 @@ registerNotificationListeners(listenerMiddleware, drawingErrorLabels);
 export const makeStore = (preloadedState?: Partial<RootState>) => {
 	const store = configureStore({
 		reducer: rootReducer,
-		middleware: gDM => gDM().prepend(listenerMiddleware.middleware).concat(drawingApi.middleware),
+		middleware: gDM => {
+			const mw = gDM().prepend(listenerMiddleware.middleware).concat(drawingApi.middleware);
+			return import.meta.env.DEV ? mw.concat(loggerMiddleware) : mw;
+		},
 		preloadedState
 	});
 	setupListeners(store.dispatch);
