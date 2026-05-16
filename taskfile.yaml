@@ -1,0 +1,15 @@
+version: "3"
+
+includes:
+  web:
+    taskfile: ./web/taskfile.yaml
+    dir: ./web
+  server:
+    taskfile: ./cmd/server/taskfile.yaml
+    dir: ./cmd/server
+  deploy:
+    taskfile: ./deploy/taskfile.yaml
+    dir: ./deploy
+  vcblobstore:
+    taskfile: ./internal/vcblobstore/taskfile.yaml
+    dir: ./internal/vcblobstore

@@ -1,0 +1,17 @@
+# Go build outputs
+/cmd/server/xcaliapp-backend*
+/cmd/server/xcaliapp_*_*
+**/bootstrap
+**/*.zip
+fswatch.pid
+
+# Terraform
+**/.terraform*
+**/*.tfstate
+**/*.tfstate.*
+
+# Lambda build artifacts
+/cmd/lambda-prod/bootstrap
+/cmd/lambda-session-test/bootstrap
+.task
+.claude/settings.local.json

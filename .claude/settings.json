@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p cmd)",
+      "Bash(git mv *)",
+      "Bash(go version *)",
+      "Bash(mkdir -p internal/server && git mv cmd/server/authentication.go cmd/server/config.go cmd/server/config_test.go cmd/server/drawingrepo.go cmd/server/logging.go cmd/server/server.go cmd/server/webclient.go internal/server/ && git mv cmd/server/main.go internal/server/run.go && ls cmd/server internal/server)",
+      "Bash(xargs sed -i 's/^package main$/package server/')",
+      "Bash(git rm *)",
+      "Bash(go mod *)",
+      "Bash(echo \"BUILD_EXIT=$?\")",
+      "Bash(git add *)",
+      "Bash(task --list-all)"
+    ],
+    "additionalDirectories": [
+      "/home/pkovacs/github/pdkovacs/xcaliapp/internal"
+    ]
+  }
+}
