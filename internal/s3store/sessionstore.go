@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -97,7 +98,7 @@ func (store *SessionStore) deleteAllSessions(ctx context.Context) error {
 
 func (store *SessionStore) ServeClientCode(ctx context.Context, path string) (string, error) {
 	key := fmt.Sprintf("%s%s", clientObjectKey, path)
-	fmt.Printf("ServiceClientCode: requested content from key: %s\n", key)
+	slog.InfoContext(ctx, "serve client code: requested", "key", key)
 	input := s3.GetObjectInput{
 		Bucket: &store.bucketName,
 		Key:    aws.String(key),
@@ -118,7 +119,7 @@ func (store *SessionStore) ServeClientCode(ctx context.Context, path string) (st
 	if readErr != nil {
 		return "", fmt.Errorf("failed to read client code content from S3: %w", readErr)
 	}
-	fmt.Printf("ServiceClientCode: serving content from key: %s\n", key)
+	slog.InfoContext(ctx, "serve client code: serving", "key", key)
 	return string(content), nil
 }
 

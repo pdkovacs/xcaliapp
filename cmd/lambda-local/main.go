@@ -22,9 +22,12 @@ import (
 	"unicode/utf8"
 
 	awslambda "github.com/pdkovacs/xcaliapp/internal/awslambda"
+	"github.com/pdkovacs/xcaliapp/internal/logging"
 )
 
 func main() {
+	logging.Init()
+
 	addr := os.Getenv("LOCAL_LAMBDA_ADDR")
 	if addr == "" {
 		addr = ":8888"

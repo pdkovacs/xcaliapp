@@ -110,6 +110,13 @@ resource "aws_lambda_function" "xcali_prod" {
     }
   }
 
+  # JSON system log format so platform events (START/END/REPORT) carry
+  # requestId. Application logs are emitted as JSON by internal/logging
+  # (provided.al2023 does not restructure app stdout itself).
+  logging_config {
+    log_format = "JSON"
+  }
+
   depends_on = [
     aws_iam_role_policy_attachment.lambda_logs,
     # aws_cloudwatch_log_group.xcali_prod

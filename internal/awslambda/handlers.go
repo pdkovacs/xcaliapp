@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -121,7 +122,7 @@ func handleDrawingRequest(ctx context.Context, parsedEvent map[string]any) (lamb
 func HandleRequest(ctx context.Context, event json.RawMessage) (LambdaResponseToAPIGW, error) {
 	parsedEvent, email, authErr := parseEventVerifyAccess(event)
 	if authErr != nil {
-		fmt.Printf("auth failed: %v\n", authErr)
+		slog.WarnContext(ctx, "auth failed", "error", authErr)
 		return unauthorized("Unauthorized"), nil
 	}
 	ctx = contextWithEmail(ctx, email)
@@ -133,7 +134,7 @@ func HandleRequest(ctx context.Context, event json.RawMessage) (LambdaResponseTo
 	}
 
 	method, _ := extractHTTPMethod(parsedEvent)
-	fmt.Printf("request: method=%s path=%s\n", method, path)
+	slog.InfoContext(ctx, "request", "method", method, "path", path)
 
 	var result lambdaResponse
 	var handlerErr error
@@ -145,7 +146,7 @@ func HandleRequest(ctx context.Context, event json.RawMessage) (LambdaResponseTo
 	}
 
 	if handlerErr != nil {
-		fmt.Printf("handler error: %v\n", handlerErr)
+		slog.ErrorContext(ctx, "handler error", "error", handlerErr, "method", method, "path", path)
 		return LambdaResponseToAPIGW{StatusCode: http.StatusInternalServerError, Body: "internal error"}, nil
 	}
 
