@@ -94,6 +94,12 @@ func parseEventVerifyAccess(event json.RawMessage) (map[string]any, string, erro
 		return nil, "", fmt.Errorf("failed to unmarshal event: %w", err)
 	}
 
+	if devAuthSkip() {
+		// Local/LocalStack testing only: bypass the Cloudflare Access gate and
+		// attribute the request to a fixed dev identity.
+		return parsedEvent, devAuthEmail, nil
+	}
+
 	headers, ok := parsedEvent["headers"].(map[string]any)
 	if !ok {
 		return nil, "", fmt.Errorf("event has no headers")

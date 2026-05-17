@@ -1,0 +1,39 @@
+# MinIO: free, open-source, S3-compatible object store for local
+# web -> Lambda(adapter) -> S3 testing. No auth token required.
+#
+# internal/s3store/client.go already switches to path-style addressing when
+# AWS_ENDPOINT_URL_S3 is set, which is exactly what MinIO needs.
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: xcaliapp-minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000" # S3 API endpoint (AWS_ENDPOINT_URL_S3)
+      - "9001:9001" # web console
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - "./data:/data"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  # One-shot: create and version the bucket the app/tests expect, then exit.
+  createbucket:
+    image: minio/mc:latest
+    container_name: xcaliapp-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        mc alias set local http://minio:9000 minioadmin minioadmin &&
+        mc mb --ignore-existing local/test-xcalidrawings &&
+        mc version enable local/test-xcalidrawings &&
+        echo "bucket test-xcalidrawings ready (versioning enabled)"

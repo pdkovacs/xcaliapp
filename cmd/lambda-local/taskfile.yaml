@@ -1,0 +1,30 @@
+version: "3"
+
+# Runs the production Lambda handler over HTTP against MinIO, with the
+# Cloudflare Access gate bypassed. These must be set before process start:
+# the awslambda package reads them at init (S3 stores + auth verifier).
+env:
+  XCALI_DEV_AUTH: skip
+  DRAWINGS_BUCKET_NAME: test-xcalidrawings
+  AWS_ENDPOINT_URL_S3: http://localhost:9000
+  AWS_ACCESS_KEY_ID: minioadmin
+  AWS_SECRET_ACCESS_KEY: minioadmin
+  AWS_REGION: us-east-1
+  LOCAL_LAMBDA_ADDR: ":8888"
+
+tasks:
+  run:
+    desc: Run the Lambda handler over HTTP on :8888 (needs MinIO up + seeded)
+    cmds:
+      - go run .
+
+  build:
+    desc: Build the lambda-local binary
+    cmds:
+      - go build -o lambda-local .
+
+  test:
+    desc: Unit-test the event translation (needs the env block; awslambda
+      panics at import otherwise)
+    cmds:
+      - go test ./...

@@ -1,0 +1,69 @@
+version: "3"
+
+# S3 endpoint / credentials the app and tests use against MinIO.
+# config.LoadDefaultConfig() (internal/s3store) reads the AWS_* vars;
+# client.go enables path-style when AWS_ENDPOINT_URL_S3 is set.
+env:
+  AWS_ENDPOINT_URL_S3: http://localhost:9000
+  AWS_ACCESS_KEY_ID: minioadmin
+  AWS_SECRET_ACCESS_KEY: minioadmin
+  AWS_REGION: us-east-1
+  AWS_DEFAULT_REGION: us-east-1 # the aws CLI reads this one
+  BUCKET: test-xcalidrawings
+
+tasks:
+  up:
+    desc: Start MinIO and create the versioned test bucket
+    cmds:
+      # Not `--wait`: the one-shot createbucket sidecar exits, which `--wait`
+      # treats as a failure. Wait on MinIO health + the sidecar's exit code.
+      - docker compose up -d
+      - |
+        for i in $(seq 1 30); do
+          curl -sf http://localhost:9000/minio/health/live >/dev/null && break
+          sleep 1
+        done
+        rc=$(docker wait xcaliapp-minio-init)
+        if [ "$rc" != "0" ]; then
+          echo "bucket init failed (exit $rc):" >&2
+          docker logs xcaliapp-minio-init >&2
+          exit 1
+        fi
+      - echo "MinIO ready - S3 API http://localhost:9000, console http://localhost:9001 (minioadmin/minioadmin)"
+
+  seed:
+    desc: Build the SPA and seed the bucket (client/ assets + credentials object)
+    dir: ../../web
+    cmds:
+      # Fresh production build of the web client.
+      - npm ci
+      - npm run build
+      # Upload the SPA under the client/ prefix. The Lambda serves it via
+      # ServeClientCode, which maps rawPath -> key "client<path>"
+      # (e.g. "/" -> "client/index.html").
+      - >-
+        aws --endpoint-url "$AWS_ENDPOINT_URL_S3" s3 cp --recursive
+        ./dist/ "s3://$BUCKET/client/"
+      # Allowed-credentials object expected by SessionStore.GetAllowedCredentials
+      # (the s3store session test asserts its content is exactly "qwer\n").
+      - printf 'qwer\n' | aws --endpoint-url "$AWS_ENDPOINT_URL_S3" s3 cp - "s3://$BUCKET/credentials"
+      - >-
+        echo "Seeded s3://$BUCKET/ -> client/index.html +
+        $(aws --endpoint-url "$AWS_ENDPOINT_URL_S3" s3 ls --recursive "s3://$BUCKET/client/" | wc -l) client objects + credentials"
+
+  down:
+    desc: Stop MinIO (keeps bucket data)
+    cmds:
+      - docker compose down
+
+  destroy:
+    desc: Stop MinIO and wipe all local bucket data
+    cmds:
+      - docker compose down -v
+      - docker run --rm -v "$PWD/data:/data" alpine sh -c 'rm -rf /data/*' || true
+      - rm -rf ./data
+
+  health:
+    desc: Show MinIO health
+    cmds:
+      - curl -sf http://localhost:9000/minio/health/live && echo "MinIO live" || echo "MinIO down"

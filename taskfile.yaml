@@ -13,3 +13,22 @@ includes:
   vcblobstore:
     taskfile: ./internal/vcblobstore/taskfile.yaml
     dir: ./internal/vcblobstore
+
+tasks:
+  dev:
+    desc: >-
+      Full local web -> Lambda -> S3 stack: MinIO + the Lambda handler
+      (lambda-local, Cloudflare Access bypassed) + the Vite dev server.
+      Ctrl-C stops the handler and Vite (MinIO keeps running; use
+      'task deploy:minio:down' to stop it).
+    cmds:
+      # Sequential: bring MinIO up first, then run the two servers
+      # concurrently (Task runs deps in parallel and forwards interrupts).
+      - task: deploy:minio:up
+      - task: dev-servers
+
+  dev-servers:
+    internal: true
+    deps:
+      - deploy:local:run
+      - web:dev

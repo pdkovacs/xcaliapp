@@ -7,3 +7,9 @@ includes:
   sessiontest:
     taskfile: ../cmd/lambda-session-test/taskfile.yaml
     dir: ../cmd/lambda-session-test/
+  minio:
+    taskfile: ./minio/taskfile.yaml
+    dir: ./minio/
+  local:
+    taskfile: ../cmd/lambda-local/taskfile.yaml
+    dir: ../cmd/lambda-local/

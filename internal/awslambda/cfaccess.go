@@ -11,6 +11,18 @@ import (
 
 const accessJWTHeaderKey = "cf-access-jwt-assertion"
 
+// devAuthEmail is the identity attributed to every request when the Cloudflare
+// Access gate is bypassed via XCALI_DEV_AUTH=skip (local/LocalStack testing
+// only). It is never used when the flag is unset.
+const devAuthEmail = "dev@local"
+
+// devAuthSkip reports whether Cloudflare Access verification should be skipped.
+// This is strictly opt-in via XCALI_DEV_AUTH=skip and must never be set in
+// production.
+func devAuthSkip() bool {
+	return os.Getenv("XCALI_DEV_AUTH") == "skip"
+}
+
 type accessClaims struct {
 	Email string `json:"email"`
 	jwt.RegisteredClaims
@@ -25,6 +37,12 @@ type accessVerifier struct {
 var verifier = mustInitVerifier()
 
 func mustInitVerifier() *accessVerifier {
+	if devAuthSkip() {
+		// Skip the JWKS fetch and the required-env-var check entirely; the
+		// verifier is never consulted while XCALI_DEV_AUTH=skip is set.
+		return nil
+	}
+
 	teamDomain := os.Getenv("CF_ACCESS_TEAM_DOMAIN")
 	aud := os.Getenv("CF_ACCESS_AUD")
 	if teamDomain == "" || aud == "" {

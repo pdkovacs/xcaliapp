@@ -13,5 +13,9 @@ fswatch.pid
 # Lambda build artifacts
 /cmd/lambda-prod/bootstrap
 /cmd/lambda-session-test/bootstrap
+/cmd/lambda-local/lambda-local
 .task
 .claude/settings.local.json
+
+# MinIO runtime state
+/deploy/minio/data/
