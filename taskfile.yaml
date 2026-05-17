@@ -15,6 +15,52 @@ includes:
     dir: ./internal/vcblobstore
 
 tasks:
+  apply-prod:
+    desc: >-
+      Build the production Lambda binary, apply the prod Terraform stack, and
+      upload the web client to the prod bucket so binary and client never drift.
+    cmds:
+      - task: deploy:prod:build
+      - task: deploy:prodtf:apply
+        vars:
+          DRAWINGS_BUCKET_NAME: "{{.DRAWINGS_BUCKET_NAME}}"
+      # The Lambda serves the SPA from s3://<bucket>/client/; apply alone
+      # leaves a stale client there. Resolve the bucket apply actually used
+      # (explicit var/env first, else read it back from this stack's state,
+      # which post-apply is authoritative) and push the matching dist/.
+      - task: web:deploy
+        vars:
+          DRAWINGS_BUCKET_NAME:
+            sh: |
+              set -eu
+              bucket='{{.DRAWINGS_BUCKET_NAME}}'
+              [ -n "$bucket" ] || bucket="${DRAWINGS_BUCKET_NAME:-}"
+              [ -n "$bucket" ] || bucket=$(task -s deploy:prodtf:bucket-from-state)
+              [ -n "$bucket" ] || { echo "apply-prod: could not resolve prod bucket for web client upload" >&2; exit 1; }
+              printf '%s' "$bucket"
+
+  destroy-prod:
+    desc: Destroy the prod Terraform stack.
+    cmds:
+      - task: deploy:prodtf:destroy
+        vars:
+          DRAWINGS_BUCKET_NAME: "{{.DRAWINGS_BUCKET_NAME}}"
+
+  apply-session-test:
+    desc: Build the session-test Lambda binary and apply its Terraform stack.
+    cmds:
+      - task: deploy:sessiontest:build
+      - task: deploy:sessiontesttf:apply
+        vars:
+          DRAWINGS_BUCKET_NAME: xcali-session-test
+
+  destroy-session-test:
+    desc: Destroy the session-test Terraform stack.
+    cmds:
+      - task: deploy:sessiontesttf:destroy
+        vars:
+          DRAWINGS_BUCKET_NAME: xcali-session-test
+
   dev:
     desc: >-
       Full local web -> Lambda -> S3 stack: MinIO + the Lambda handler

@@ -1,7 +1,7 @@
 locals {
   function_name    = "sessionTest"
   archive_filename = "sessionTest.zip"
-  impl_dir         = "${path.module}/../../../aws-lambda/session-test"
+  impl_dir         = "${path.module}/../../../../cmd/lambda-session-test"
 }
 
 data "aws_s3_bucket" "store" {

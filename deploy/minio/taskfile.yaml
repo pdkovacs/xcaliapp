@@ -3,7 +3,11 @@ version: "3"
 # S3 endpoint / credentials the app and tests use against MinIO.
 # config.LoadDefaultConfig() (internal/s3store) reads the AWS_* vars;
 # client.go enables path-style when AWS_ENDPOINT_URL_S3 is set.
-env:
+#
+# Scoped per-task (not at taskfile root): a root-level `env:` here leaks
+# into the whole `task` run and outranks the OS environment, which made
+# `task apply-prod` run Terraform with the minioadmin creds (InvalidClientTokenId).
+x-minio-env: &minio_env
   AWS_ENDPOINT_URL_S3: http://localhost:9000
   AWS_ACCESS_KEY_ID: minioadmin
   AWS_SECRET_ACCESS_KEY: minioadmin
@@ -14,6 +18,7 @@ env:
 tasks:
   up:
     desc: Start MinIO and create the versioned test bucket
+    env: *minio_env
     cmds:
       # Not `--wait`: the one-shot createbucket sidecar exits, which `--wait`
       # treats as a failure. Wait on MinIO health + the sidecar's exit code.
@@ -34,6 +39,7 @@ tasks:
   seed:
     desc: Build the SPA and seed the bucket (client/ assets + credentials object)
     dir: ../../web
+    env: *minio_env
     cmds:
       # Fresh production build of the web client.
       - npm ci
@@ -53,11 +59,13 @@ tasks:
 
   down:
     desc: Stop MinIO (keeps bucket data)
+    env: *minio_env
     cmds:
       - docker compose down
 
   destroy:
     desc: Stop MinIO and wipe all local bucket data
+    env: *minio_env
     cmds:
       - docker compose down -v
       - docker run --rm -v "$PWD/data:/data" alpine sh -c 'rm -rf /data/*' || true

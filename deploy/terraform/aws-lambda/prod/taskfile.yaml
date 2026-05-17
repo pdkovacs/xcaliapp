@@ -1,0 +1,49 @@
+version: "3"
+
+tasks:
+  # Prints the S3 bucket this stack is currently applied against, read from
+  # its own Terraform state (empty + exit 0 if the stack was never applied).
+  # Single source of truth for the fragile `terraform state show | awk`
+  # parse; callers layer their own precedence/prompts on top. Assumes the
+  # backend is already initialized (the apply task inits before calling this;
+  # post-apply callers run in the dir left initialized by that apply).
+  bucket-from-state:
+    silent: true
+    cmds:
+      - terraform state show -no-color data.aws_s3_bucket.store 2>/dev/null
+        | awk -F'"' '/^[[:space:]]*bucket[[:space:]]*=/{print $2; exit}'
+
+  apply:
+    # interactive: lets the `read` confirmation prompt reach the TTY.
+    interactive: true
+    cmds:
+      - terraform init -reconfigure
+      # Resolve the target bucket. Precedence: explicit value (CLI var
+      # `task apply-prod DRAWINGS_BUCKET_NAME=...` or env, pipeline-friendly,
+      # no prompt) > the bucket already recorded in this stack's state. If we
+      # fall back to the state value, require an interactive y/N so a manual
+      # `task apply-prod` can't silently re-point prod at a stale bucket
+      # (var.s3_bucket also has a misleading `test-xcalidrawings` default).
+      - cmd: |
+          set -eu
+          bucket='{{.DRAWINGS_BUCKET_NAME}}'
+          [ -n "$bucket" ] || bucket="${DRAWINGS_BUCKET_NAME:-}"
+          if [ -z "$bucket" ]; then
+            bucket=$(task -s bucket-from-state)
+            if [ -z "$bucket" ]; then
+              echo "No DRAWINGS_BUCKET_NAME supplied and no bucket in state." >&2
+              echo "Re-run with: task apply-prod DRAWINGS_BUCKET_NAME=<bucket>" >&2
+              exit 1
+            fi
+            printf 'No DRAWINGS_BUCKET_NAME given. Apply prod against the existing bucket "%s"? [y/N] ' "$bucket"
+            read -r ans
+            case "$ans" in
+              [yY] | [yY][eE][sS]) ;;
+              *) echo "Aborted." >&2; exit 1 ;;
+            esac
+          fi
+          terraform apply -var "s3_bucket=$bucket"
+  destroy:
+    cmds:
+      - terraform init -reconfigure
+      - terraform destroy -var s3_bucket={{.DRAWINGS_BUCKET_NAME}}

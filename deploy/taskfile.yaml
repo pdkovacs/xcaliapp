@@ -4,9 +4,15 @@ includes:
   prod:
     taskfile: ../cmd/lambda-prod/taskfile.yaml
     dir: ../cmd/lambda-prod/
+  prodtf:
+    taskfile: ./terraform/aws-lambda/prod/taskfile.yaml
+    dir: ./terraform/aws-lambda/prod
   sessiontest:
     taskfile: ../cmd/lambda-session-test/taskfile.yaml
     dir: ../cmd/lambda-session-test/
+  sessiontesttf:
+    taskfile: ./terraform/aws-lambda/session-test/taskfile.yaml
+    dir: ./terraform/aws-lambda/session-test
   minio:
     taskfile: ./minio/taskfile.yaml
     dir: ./minio/

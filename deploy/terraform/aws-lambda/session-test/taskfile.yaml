@@ -1,0 +1,11 @@
+version: "3"
+
+tasks:
+  apply:
+    cmds:
+      - terraform init -reconfigure
+      - terraform apply -var s3_bucket={{.DRAWINGS_BUCKET_NAME}}
+  destroy:
+    cmds:
+      - terraform init -reconfigure
+      - terraform destroy -var s3_bucket={{.DRAWINGS_BUCKET_NAME}}

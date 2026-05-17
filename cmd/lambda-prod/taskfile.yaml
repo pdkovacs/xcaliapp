@@ -4,16 +4,3 @@ tasks:
   build:
     cmds:
       - GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o bootstrap main.go
-  deploy:
-    cmds:
-      - task: build
-      - |
-        cd ../../deploy/terraform/aws-lambda/prod
-        terraform init
-        terraform apply -var s3_bucket={{.DRAWINGS_BUCKET_NAME}}
-  undeploy:
-    cmds:
-      - |
-        cd ../../deploy/terraform/aws-lambda/prod
-        terraform init
-        terraform destroy -var s3_bucket={{.DRAWINGS_BUCKET_NAME}}

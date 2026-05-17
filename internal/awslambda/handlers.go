@@ -132,6 +132,9 @@ func HandleRequest(ctx context.Context, event json.RawMessage) (LambdaResponseTo
 		return LambdaResponseToAPIGW{StatusCode: http.StatusBadRequest, Body: "bad request"}, nil
 	}
 
+	method, _ := extractHTTPMethod(parsedEvent)
+	fmt.Printf("request: method=%s path=%s\n", method, path)
+
 	var result lambdaResponse
 	var handlerErr error
 

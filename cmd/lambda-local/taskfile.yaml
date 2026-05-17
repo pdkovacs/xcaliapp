@@ -3,7 +3,11 @@ version: "3"
 # Runs the production Lambda handler over HTTP against MinIO, with the
 # Cloudflare Access gate bypassed. These must be set before process start:
 # the awslambda package reads them at init (S3 stores + auth verifier).
-env:
+#
+# Scoped per-task (not at taskfile root): a root-level `env:` here leaks
+# into every other taskfile when this one is included, e.g. overriding
+# DRAWINGS_BUCKET_NAME for `apply-prod`.
+x-local-env: &local_env
   XCALI_DEV_AUTH: skip
   DRAWINGS_BUCKET_NAME: test-xcalidrawings
   AWS_ENDPOINT_URL_S3: http://localhost:9000
@@ -15,16 +19,19 @@ env:
 tasks:
   run:
     desc: Run the Lambda handler over HTTP on :8888 (needs MinIO up + seeded)
+    env: *local_env
     cmds:
       - go run .
 
   build:
     desc: Build the lambda-local binary
+    env: *local_env
     cmds:
       - go build -o lambda-local .
 
   test:
     desc: Unit-test the event translation (needs the env block; awslambda
       panics at import otherwise)
+    env: *local_env
     cmds:
       - go test ./...
